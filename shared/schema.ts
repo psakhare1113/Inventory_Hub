@@ -10,6 +10,7 @@ export const categories = pgTable("categories", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   imageUrl: text("image_url").notNull(),
+  parentId: integer("parent_id"), // Added for subcategories
 });
 
 export const products = pgTable("products", {
@@ -44,6 +45,17 @@ export const orders = pgTable("orders", {
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// Relations
+export const categoriesRelations = relations(categories, ({ one, many }) => ({
+  parent: one(categories, {
+    fields: [categories.parentId],
+    references: [categories.id],
+    relationName: "subcategories",
+  }),
+  subcategories: many(categories, { relationName: "subcategories" }),
+  products: many(products),
+}));
 
 // Zod schemas
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });

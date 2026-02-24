@@ -6,44 +6,75 @@ import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 
 async function seedDatabase() {
-  const categories = await storage.getCategories();
-  if (categories.length === 0) {
+  const categoriesCount = await storage.getCategories();
+  if (categoriesCount.length === 0) {
+    // Parent Categories
     const livingRoom = await storage.createCategory({ name: "Living Room", slug: "living-room", imageUrl: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&q=80" });
     const bedroom = await storage.createCategory({ name: "Bedroom", slug: "bedroom", imageUrl: "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&q=80" });
-    
-    // Create some products
-    await storage.createProduct({
-      categoryId: livingRoom.id,
-      name: "Genova Leatherette Sofa",
-      description: "Luxurious tan leatherette sofa for your living room. Perfect combination of style and comfort.",
-      price: 33200,
-      originalPrice: 109000,
-      imageUrl: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&q=80",
-      isBestseller: true,
-      features: ["Premium leatherette", "Tan color", "Exchange offer available"],
-    });
+    const office = await storage.createCategory({ name: "Home Office", slug: "home-office", imageUrl: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&q=80" });
 
-    await storage.createProduct({
-      categoryId: livingRoom.id,
-      name: "Alexa Elite Half Leather Sofa",
-      description: "Comfortable and elegant half leather sofa in grey. Fits any modern interior.",
-      price: 55000,
-      originalPrice: 159900,
-      imageUrl: "https://images.unsplash.com/photo-1540574163026-643ea20d25b5?auto=format&fit=crop&q=80",
-      isBestseller: true,
-      features: ["Half leather", "Grey color", "Elite design"],
-    });
-    
-    await storage.createProduct({
-      categoryId: bedroom.id,
-      name: "Queen Size Wooden Bed",
-      description: "Sturdy wooden bed with a minimalist design.",
-      price: 25000,
-      originalPrice: 40000,
-      imageUrl: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&q=80",
-      isBestseller: false,
-      features: ["Queen size", "Solid wood", "Minimalist"],
-    });
+    // Subcategories
+    const sofas = await storage.createCategory({ name: "Sofas", slug: "sofas", imageUrl: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&q=80", parentId: livingRoom.id });
+    const beds = await storage.createCategory({ name: "Beds", slug: "beds", imageUrl: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&q=80", parentId: bedroom.id });
+    const desks = await storage.createCategory({ name: "Desks", slug: "desks", imageUrl: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&q=80", parentId: office.id });
+
+    // Products
+    const sampleProducts = [
+      {
+        categoryId: sofas.id,
+        name: "Genova Leatherette Sofa",
+        description: "Luxurious tan leatherette sofa for your living room. Perfect combination of style and comfort.",
+        price: 33200,
+        originalPrice: 109000,
+        imageUrl: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&q=80",
+        isBestseller: true,
+        features: ["Premium leatherette", "Tan color", "Exchange offer available"],
+      },
+      {
+        categoryId: sofas.id,
+        name: "Alexa Elite Half Leather Sofa",
+        description: "Comfortable and elegant half leather sofa in grey. Fits any modern interior.",
+        price: 55000,
+        originalPrice: 159900,
+        imageUrl: "https://images.unsplash.com/photo-1540574163026-643ea20d25b5?auto=format&fit=crop&q=80",
+        isBestseller: true,
+        features: ["Half leather", "Grey color", "Elite design"],
+      },
+      {
+        categoryId: beds.id,
+        name: "Queen Size Wooden Bed",
+        description: "Sturdy wooden bed with a minimalist design.",
+        price: 25000,
+        originalPrice: 40000,
+        imageUrl: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&q=80",
+        isBestseller: false,
+        features: ["Queen size", "Solid wood", "Minimalist"],
+      },
+      {
+        categoryId: desks.id,
+        name: "Minimalist Study Table",
+        description: "Clean lines and functional design for your workspace.",
+        price: 12000,
+        originalPrice: 18000,
+        imageUrl: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&q=80",
+        isBestseller: true,
+        features: ["Solid oak", "Storage drawer", "Compact design"],
+      },
+      {
+        categoryId: sofas.id,
+        name: "Lounge Armchair",
+        description: "Ergonomic and stylish armchair for relaxation.",
+        price: 18500,
+        originalPrice: 28000,
+        imageUrl: "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&q=80",
+        isBestseller: false,
+        features: ["Soft fabric", "Solid wood legs", "Mustard yellow"],
+      }
+    ];
+
+    for (const product of sampleProducts) {
+      await storage.createProduct(product);
+    }
   }
 }
 
