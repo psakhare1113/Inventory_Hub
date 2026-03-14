@@ -1,0 +1,18 @@
+package com.pixelbloom.orders.exception;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import java.time.LocalDateTime;
+
+@Data
+@AllArgsConstructor
+@Builder
+public class ErrorResponse {
+    private int status;
+    private String errorCode;
+    private String error;
+    private String message;
+    private LocalDateTime timestamp;
+    private String path;
+}

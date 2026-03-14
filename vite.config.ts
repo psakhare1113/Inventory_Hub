@@ -1,40 +1,27 @@
+import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { cloudflare } from "@cloudflare/vite-plugin";
+import { mochaPlugins } from "@getmocha/vite-plugins";
 
 export default defineConfig({
-  plugins: [
-    react(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
-  ],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+	  plugins: [
+	    ...mochaPlugins(process.env as any),
+	    react(),
+	    cloudflare({
+	      auxiliaryWorkers: [{ configPath: "/mocha/emails-service/wrangler.json" }],
+	    }),
+	  ],
+	  server: {
+	    allowedHosts: true,
+	  },
+  build: {
+    chunkSizeWarningLimit: 5000,
+  },
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
-    },
-  },
-  root: path.resolve(import.meta.dirname, "client"),
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
-  },
-  server: {
-    fs: {
-      strict: true,
-      deny: ["**/.*"],
+      "@": path.resolve(__dirname, "./src"),
     },
   },
 });

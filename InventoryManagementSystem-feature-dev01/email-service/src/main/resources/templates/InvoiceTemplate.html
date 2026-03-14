@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tax Invoice</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7fc;
+            font-family: Arial, sans-serif;
+        }
+
+        .invoice-wrapper {
+            max-width: 820px;
+            margin: auto;
+            background: #ffffff;
+            border: 1px solid #dfe6f0;
+            padding: 24px;
+        }
+
+        /* HEADER */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #2f6fed;
+            padding-bottom: 16px;
+        }
+
+        .logo img {
+            height: 80px;
+        }
+
+        .invoice-title {
+            text-align: right;
+        }
+
+        .invoice-title h2 {
+            margin: 0;
+            font-size: 22px;
+            color: #2f6fed;
+        }
+
+        /* SECTIONS */
+        .section {
+            margin-top: 18px;
+        }
+
+        .two-col {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .box {
+            width: 50%;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .box strong {
+            color: #1f3c88;
+        }
+
+        /* ORDER INFO BLOCK */
+        .order-info {
+            border: 1px solid #cfd9f5;
+            background-color: #eef3ff;
+            padding: 12px;
+            font-size: 13px;
+        }
+
+        .order-info .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        /* BARCODE */
+        .barcode {
+            margin-top: 12px;
+            padding: 14px;
+            border: 1px dashed #9db7ff;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+        }
+
+        /* TABLE */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 18px;
+            font-size: 13px;
+        }
+
+        th {
+            background-color: #eef3ff;
+            border: 1px solid #cfd9f5;
+            padding: 10px;
+            color: #1f3c88;
+        }
+
+        td {
+            border: 1px solid #cfd9f5;
+            padding: 10px;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        /* SUMMARY */
+        .summary {
+            width: 100%;
+            margin-top: 20px;
+            font-size: 13px;
+        }
+
+        .summary td {
+            padding: 8px;
+        }
+
+        .total {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2f6fed;
+        }
+
+        /* FOOTER */
+        .footer {
+            margin-top: 30px;
+            padding-top: 12px;
+            border-top: 1px dashed #b0c4ff;
+            font-size: 11px;
+            color: #555;
+        }
+
+        .signature {
+            margin-top: 30px;
+            text-align: right;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="invoice-wrapper">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="logo">
+            <!-- Replace src with CID or hosted image -->
+            <img src="cid:logo" alt="Logo">
+        </div>
+        <div class="invoice-title">
+            <h2>Tax Invoice</h2>
+        </div>
+    </div>
+
+    <!-- SELLER & BILLING -->
+    <div class="section two-col">
+        <div class="box">
+            <strong>Sold By:     </strong><br>
+            ${sellerName}<br>
+            ${sellerAddress}<br>
+            GSTIN:    ${sellerGstin}<br>
+            PAN:    ${sellerPan}
+        </div>
+        <div class="box">
+            <strong>Billing Address:    </strong><br>
+            ${billingName}<br>
+            ${billingAddress}<br>
+            State/UT Code: ${billingStateCode}
+        </div>
+    </div>
+
+    <!-- SHIPPING & BARCODE -->
+    <div class="section two-col">
+        <div class="box">
+            <strong>Shipping Address:     </strong><br>
+            ${shippingName}<br>
+            ${shippingAddress}<br>
+            State/UT Code:  ${shippingStateCode}
+        </div>
+        <div class="box">
+            <strong>Shipping Barcode</strong>
+            <div class="barcode">
+                BARCODE IMAGE PLACEHOLDER
+            </div>
+        </div>
+    </div>
+
+    <!-- ORDER / INVOICE INFO (ABOVE TABLE) -->
+    <div class="section order-info">
+        <div class="row">
+            <div><strong>Order Number:           </strong> ${orderNumber}</div>
+            <div><strong>Invoice Number:         </strong> ${invoiceNumber}</div>
+        </div>
+        <div class="row">
+            <div><strong>Order Date:           </strong> ${orderDate}</div>
+            <div><strong>Invoice Date:         </strong> ${invoiceDate}</div>
+        </div>
+        <div class="row">
+            <div><strong>Invoice Details:       </strong> ${invoiceDetails}</div>
+            <div></div>
+        </div>
+        <div class="row">
+            <div><strong>Place of Supply:       </strong> ${placeOfSupply}</div>
+            <div><strong>Place of Delivery:      </strong> ${placeOfDelivery}</div>
+        </div>
+    </div>
+
+    <!-- ITEMS TABLE -->
+    <table>
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Description</th>
+            <th>Qty</th>
+            <th class="text-right">Unit Price</th>
+            <th class="text-right">Tax</th>
+            <th class="text-right">Total</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!-- LOOP START -->
+        ${itemRows}
+        <!-- LOOP END -->
+        </tbody>
+    </table>
+
+    <!-- SUMMARY -->
+    <table class="summary">
+        <tr>
+            <td class="text-right">Subtotal:</td>
+            <td class="text-right">${subTotal}</td>
+        </tr>
+        <tr>
+            <td class="text-right">CGST:</td>
+            <td class="text-right">${cgst}</td>
+        </tr>
+        <tr>
+            <td class="text-right">SGST:</td>
+            <td class="text-right">${sgst}</td>
+        </tr>
+        <tr>
+            <td class="text-right">IGST:</td>
+            <td class="text-right">${igst}</td>
+        </tr>
+        <tr>
+            <td class="text-right total">Grand Total:</td>
+            <td class="text-right total">${grandTotal}</td>
+        </tr>
+    </table>
+
+    <!-- AMOUNT IN WORDS -->
+   <!-- DIGITAL SIGNATURE -->
+<table style="width:100%; margin-top:28px; font-family:Arial, sans-serif;">
+    <tr>
+        <td style="text-align:right; font-size:13px;">
+            <strong>For ${sellerName}:</strong>
+        </td>
+    </tr>
+
+    <tr>
+        <td style="text-align:right; padding-top:8px;">
+            <!-- Signature Image Placeholder -->
+            <div style="
+                display:inline-block;
+                width:220px;
+                height:70px;
+                border:1px solid #cfd9f5;
+                background-color:#f2f5ff;
+                text-align:center;
+                line-height:70px;
+                font-size:11px;
+                color:#777;">
+                DIGITAL SIGNATURE
+            </div>
+        </td>
+    </tr>
+
+    <tr>
+        <td style="text-align:right; padding-top:6px; font-size:13px;">
+            <strong>Authorized Signatory</strong>
+        </td>
+    </tr>
+</table>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        This is a system generated invoice and does not require a physical signature.<br>
+        Whether tax is payable under reverse charge: No
+    </div>
+	<!-- PAYMENT INFORMATION (BELOW ITEMS TABLE) -->
+<table style="width:100%; border-collapse:collapse; margin-top:18px; font-size:13px;">
+    <tr style="background-color:#eef3ff;">
+        <td colspan="4" style="border:1px solid #cfd9f5; padding:10px; 
+            font-weight:bold; color:#1f3c88;">
+            Payment Information
+        </td>
+    </tr>
+
+    <tr>
+        <td style="border:1px solid #cfd9f5; padding:10px; width:25%;">
+            <strong>Payment Transaction ID:</strong><br>
+            ${paymentTxnId1}
+        </td>
+        <td style="border:1px solid #cfd9f5; padding:10px; width:25%;">
+            <strong>Date &amp; Time:</strong><br>
+            ${paymentDateTime1}
+        </td>
+        <td style="border:1px solid #cfd9f5; padding:10px; width:25%;">
+            <strong>Invoice Value:</strong><br>
+            ${invoiceValue}
+        </td>
+        <td style="border:1px solid #cfd9f5; padding:10px; width:25%;">
+            <strong>Mode of Payment:</strong><br>
+            ${paymentMode1}
+        </td>
+    </tr>
+
+</table>
+
+
+</div>
+</body>
+</html>

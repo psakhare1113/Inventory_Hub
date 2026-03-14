@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Order Confirmation</title>
+    <style>
+
+        .logo img {
+            height: 80px;
+        }
+    </style>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f4; font-family: Arial, sans-serif;">
+
+<table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; background-color:#ffffff; margin:20px auto; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.05);">
+
+    <!-- Header -->
+    <tr>
+        <td style="background-color:#232F3E; padding:20px; text-align:center;">
+            <div class="logo">
+                <!-- Replace src with CID or hosted image -->
+                <img src="cid:logo" alt="Logo">
+            </div>
+
+        </td>
+    </tr>
+
+    <!-- Body -->
+    <tr>
+        <td style="padding:30px; color:#333333;">
+            <h2 style="color:#232F3E; margin-top:0;">Order Confirmed!</h2>
+
+            <p>Dear <strong>${customerName}</strong>,</p>
+
+            <p>Thank you for shopping with <strong>Amazon</strong>!
+                Your order has been successfully confirmed.</p>
+
+            <table width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #eeeeee; margin:20px 0;">
+                <tr style="background-color:#f8f8f8;">
+                    <td><strong>Order Number</strong></td>
+                    <td>${orderNumber}</td>
+                </tr>
+                <tr>
+                    <td><strong>Order Date</strong></td>
+                    <td>${eventTime}</td>
+                </tr>
+            </table>
+
+            <p>You will receive another email once your items are shipped.</p>
+
+            <p style="margin-top:30px;">
+                Happy Shopping!<br>
+                <strong>Amazon Team</strong>
+            </p>
+        </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+        <td style="background-color:#232F3E; color:#ffffff; text-align:center; padding:15px; font-size:12px;">
+            © 2026 Amazon Inc. All rights reserved.
+        </td>
+    </tr>
+
+</table>
+
+</body>
+</html>

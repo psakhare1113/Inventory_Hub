@@ -1,0 +1,54 @@
+.admin .search-input {
+  transition: all 0.3s ease;
+}
+
+.admin .search-input:focus {
+  border-color: #b88e2f !important;
+  box-shadow: 0 0 0 1px #b88e2f;
+}
+
+.admin .dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.5rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  width: 10rem;
+  z-index: 50;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+}
+
+.admin .dropdown-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.admin .dropdown-item {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background-color 0.2s ease;
+}
+
+.admin .dropdown-item:hover {
+  background-color: #f9fafb;
+}
+
+.admin .dropdown-item.danger {
+  color: #ef4444;
+}
+
+.admin .dropdown-separator {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 0.25rem 0;
+}

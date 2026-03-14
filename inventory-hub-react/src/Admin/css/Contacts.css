@@ -1,0 +1,337 @@
+.admin .contacts-page {
+  padding: 24px;
+  background: #f8fafc;
+  min-height: 100vh;
+  font-family: "Inter", sans-serif;
+}
+
+/* Header */
+.admin .contacts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.admin .contacts-header h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin .add-contact-btn {
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  width: auto;
+  min-width: fit-content;
+  font-size: 14px;
+}
+
+.admin .add-contact-btn:hover {
+  background: #2563eb;
+}
+
+/* Card */
+.admin .contacts-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* Card Header */
+.admin .contacts-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.admin .contacts-card-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin .contacts-export-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.admin .contacts-pdf-btn,
+.admin .contacts-excel-btn {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin .contacts-pdf-btn {
+  color: #ef4444;
+}
+
+.admin .contacts-pdf-btn:hover {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+.admin .contacts-excel-btn {
+  color: #22c55e;
+}
+
+.admin .contacts-excel-btn:hover {
+  background: #f0fdf4;
+  border-color: #22c55e;
+}
+
+/* Table */
+.admin .contacts-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin .contacts-table th {
+  text-align: left;
+  padding: 12px;
+  font-size: 14px;
+  color: #64748b;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 600;
+}
+
+.admin .contacts-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.admin .contacts-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Avatar */
+.admin .contact-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.admin .contact-avatar.blue {
+  background: #3b82f6;
+}
+
+.admin .contact-avatar.green {
+  background: #22c55e;
+}
+
+.admin .contact-avatar.purple {
+  background: #6d28d9;
+}
+
+.admin .contact-avatar.red {
+  background: #ef4444;
+}
+
+.admin .contact-avatar.orange {
+  background: #f97316;
+}
+
+/* Actions */
+.admin .contact-action-col {
+  text-align: center;
+  width: 100px;
+}
+
+.admin .contact-action-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin .contact-edit-icon {
+  color: #3b82f6;
+  cursor: pointer;
+  font-size: 16px;
+  transition: color 0.2s;
+}
+
+.admin .contact-edit-icon:hover {
+  color: #1d4ed8;
+}
+
+.admin .contact-delete-icon {
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 16px;
+  transition: color 0.2s;
+}
+
+.admin .contact-delete-icon:hover {
+  color: #dc2626;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.close-btn {
+  color: #64748b;
+  cursor: pointer;
+  font-size: 18px;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: #0f172a;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.modal-buttons button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #d1d5db;
+}
+
+.modal-buttons button[type="button"] {
+  background: #fff;
+  color: #374151;
+}
+
+.modal-buttons button[type="button"]:hover {
+  background: #f9fafb;
+}
+
+.modal-buttons button[type="submit"] {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+.modal-buttons button[type="submit"]:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.contact-form {
+  display: block;
+}
+
+.form-group input::placeholder {
+  color: #9ca3af;
+}
+
+.form-group input:invalid {
+  border-color: #ef4444;
+}
+
+.form-group input:valid {
+  border-color: #22c55e;
+}
+
+.admin .contact-avatar.teal {
+  background: #14b8a6;
+}
+
+.admin .contact-avatar.pink {
+  background: #ec4899;
+}
