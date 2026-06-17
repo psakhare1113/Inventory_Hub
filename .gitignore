@@ -30,6 +30,9 @@ target/
 *.swo
 *~
 
+# Kiro AI IDE files (internal specs and configs)
+.kiro/
+
 # OS generated files
 .DS_Store
 .DS_Store?
