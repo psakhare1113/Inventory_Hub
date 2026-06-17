@@ -66,6 +66,36 @@ npm run dev
 - **Shipping Service** (9096): Shipping management
 - **Email Service** (9097): Email notifications
 
+## Email Service Setup
+
+The email service uses Gmail SMTP to send order confirmations, invoices, and notifications.
+
+### Step 1 — Generate Gmail App Password
+1. Go to [Google Account](https://myaccount.google.com/) → Security
+2. Enable **2-Step Verification** (required)
+3. Go to **App Passwords** → Select app: Mail → Select device: Windows
+4. Copy the 16-character password generated (e.g. `djpf fcfc kfyb rula`)
+
+### Step 2 — Configure application.properties
+Copy the example file and fill in your credentials:
+```bash
+cd InventoryManagementSystem-feature-dev01/email-service/src/main/resources
+cp application.properties.example application.properties
+```
+
+Edit `application.properties`:
+```properties
+spring.mail.username=your_gmail@gmail.com
+spring.mail.password=your_16_char_app_password
+
+invoice.email.from=your_gmail@gmail.com
+invoice.email.to=your_gmail@gmail.com
+```
+
+> ⚠️ **Never commit `application.properties`** — it is already in `.gitignore`
+
+---
+
 ## Contributing
 
 1. Fork the repository
