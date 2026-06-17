@@ -96,13 +96,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, HttpServletRequest request) {
 
-        log.error("Unexpected error", ex);
+        log.error("Unexpected error at [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .errorCode("INTERNAL_SERVER_ERROR")
                 .error("SYSTEM_ERROR")
-                .message("Something went wrong. Please contact support.")
+                .message(ex.getMessage() != null ? ex.getMessage() : "Something went wrong. Please contact support.")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
                 .build();
@@ -147,15 +147,15 @@ public class GlobalExceptionHandler {
             InventoryReservationException ex, HttpServletRequest request) {
 
         ErrorResponse error = ErrorResponse.builder()
-                .status(HttpStatus.SERVICE_UNAVAILABLE.value())
-                .errorCode("INVENTORY_SERVICE_ERROR")
-                .error("SERVICE_ERROR")
+                .status(HttpStatus.BAD_REQUEST.value())
+                .errorCode("INSUFFICIENT_INVENTORY")
+                .error("INVENTORY_ERROR")
                 .message(ex.getMessage())
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
                 .build();
 
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
     @ExceptionHandler(PricingException.class)
@@ -178,16 +178,23 @@ public class GlobalExceptionHandler {
             DownstreamServiceException ex,
             HttpServletRequest request) {
 
+        // Never return 2xx for an error — if downstream returned 200 but we still
+        // threw, treat it as a 502 Bad Gateway so the frontend sees response.ok = false
+        int httpStatus = ex.getStatus();
+        if (httpStatus < 400) {
+            httpStatus = 502;
+        }
+
         ErrorResponse error = ErrorResponse.builder()
-                .status(ex.getStatus())
+                .status(httpStatus)
                 .errorCode("DOWNSTREAM_ERROR")
-                .error("AUTH_SERVICE_ERROR")
+                .error("DOWNSTREAM_SERVICE_ERROR")
                 .message(ex.getMessage())
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
                 .build();
 
-        return ResponseEntity.status(ex.getStatus()).body(error);
+        return ResponseEntity.status(httpStatus).body(error);
     }
 
 

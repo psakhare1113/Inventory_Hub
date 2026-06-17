@@ -41,6 +41,28 @@
   background: #16a34a;
 }
 
+.admin .add-attributes-btn {
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  width: auto;
+  min-width: fit-content;
+  font-size: 14px;
+}
+
+.admin .add-attributes-btn:hover {
+  background: #2563eb;
+}
+
 /* Card */
 .admin .products-card {
   background: #fff;
@@ -365,4 +387,667 @@
 .admin .product-attributes .more-badge:hover {
   background: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);
   color: #495057;
+}
+
+/* Bulk Attributes Modal Styles */
+.admin .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.admin .bulk-attributes-modal {
+  background: white;
+  border-radius: 12px;
+  width: 500px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.admin .modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+}
+
+.admin .modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.admin .close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.admin .close-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.admin .modal-body {
+  padding: 20px 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.admin .form-group {
+  margin-bottom: 18px;
+}
+
+.admin .form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+}
+
+.admin .form-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  transition: border-color 0.2s;
+}
+
+.admin .form-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.admin .attributes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.admin .add-more-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-width: 50px;
+  width: auto;
+}
+
+.admin .add-more-btn:hover {
+  background: #059669;
+}
+
+.admin .attributes-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.admin .attribute-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.admin .attribute-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: border-color 0.2s;
+}
+
+.admin .attribute-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.admin .remove-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.admin .remove-btn:hover {
+  background: #dc2626;
+}
+
+.admin .modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  background: #f8fafc;
+}
+
+.admin .btn-cancel {
+  padding: 10px 20px;
+  background: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.admin .btn-cancel:hover {
+  background: #4b5563;
+}
+
+.admin .btn-submit {
+  padding: 10px 20px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.admin .btn-submit:hover {
+  background: #2563eb;
+}
+
+/* Static Fields Styling */
+.admin .static-field {
+  background-color: #f8f9fa !important;
+  cursor: not-allowed !important;
+  font-weight: 500;
+  color: #495057;
+}
+
+.admin .clear-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.admin .clear-btn:hover {
+  background: #5a6268;
+}
+
+/* Image Upload Modal Styles */
+.admin .image-upload-modal {
+  position: relative;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.admin .image-upload-modal .modal-header {
+  position: relative;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.admin .image-upload-modal .modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.admin .image-upload-modal .close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.admin .image-upload-modal .close-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.admin .add-image-btn {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.admin .add-image-btn:hover {
+  background: #138496;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Products — Search Toolbar & Filter Enhancements
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Loading state */
+.products-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 4rem 2rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.products-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: products-spin 0.7s linear infinite;
+}
+
+@keyframes products-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Header layout */
+.admin .products-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin .products-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin .products-header-left h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.admin .products-status-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.admin .products-status-badge.success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.admin .products-status-badge.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.admin .products-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Refresh button (icon only) */
+.admin .refresh-btn-pro {
+  background: #f3f4f6;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.admin .refresh-btn-pro:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+/* ── Toolbar (search + filters) ─────────────────────────────── */
+.admin .products-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  flex-wrap: wrap;
+}
+
+/* Search box */
+.admin .products-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.625rem;
+  padding: 0 0.75rem;
+  height: 2.25rem;
+  flex: 1;
+  min-width: 200px;
+  max-width: 380px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.admin .products-search-box:focus-within {
+  background: #fff;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.admin .psb-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.admin .products-search-box:focus-within .psb-icon {
+  color: #6366f1;
+}
+
+.admin .psb-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  min-width: 0;
+}
+
+.admin .psb-input::placeholder {
+  color: #9ca3af;
+}
+
+.admin .psb-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 50%;
+  transition: color 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.admin .psb-clear:hover {
+  color: #374151;
+  background: #e5e7eb;
+}
+
+/* Filter selects */
+.admin .products-filter-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.625rem;
+  padding: 0 0.625rem;
+  height: 2.25rem;
+  transition: border-color 0.2s ease;
+}
+
+.admin .products-filter-select-wrap:focus-within {
+  border-color: #6366f1;
+}
+
+.admin .pfs-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.admin .products-filter-select {
+  border: none;
+  background: transparent;
+  font-size: 0.8rem;
+  color: #374151;
+  outline: none;
+  cursor: pointer;
+  padding-right: 0.25rem;
+}
+
+/* Clear all filters button */
+.admin .products-clear-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  color: #dc2626;
+  border-radius: 0.5rem;
+  padding: 0 0.75rem;
+  height: 2.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.admin .products-clear-filters:hover {
+  background: #fee2e2;
+}
+
+/* Result count */
+.admin .products-result-count {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  font-weight: 500;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+/* ── Filter chips ────────────────────────────────────────────── */
+.admin .products-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  flex-wrap: wrap;
+}
+
+.admin .filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: #ede9fe;
+  color: #5b21b6;
+  border-radius: 999px;
+  padding: 3px 10px 3px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.admin .filter-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #7c3aed;
+  display: flex;
+  align-items: center;
+  padding: 1px;
+  border-radius: 50%;
+  transition: background 0.12s ease;
+}
+
+.admin .filter-chip button:hover {
+  background: rgba(124, 58, 237, 0.15);
+}
+
+/* ── Error banner ────────────────────────────────────────────── */
+.admin .products-error-banner {
+  padding: 0.875rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  margin: 0.75rem 1rem;
+  color: #991b1b;
+  font-size: 0.875rem;
+}
+
+/* ── Highlight row (from Navbar search) ─────────────────────── */
+.admin .product-row-highlight {
+  background: #faf5ff !important;
+  outline: 2px solid #8b5cf6;
+  outline-offset: -2px;
+  animation: row-highlight-pulse 0.6s ease 2;
+}
+
+@keyframes row-highlight-pulse {
+  0%   { background: #ede9fe !important; }
+  50%  { background: #faf5ff !important; }
+  100% { background: #ede9fe !important; }
+}
+
+/* ── Hide / Unhide Button ── */
+.admin .product-hide-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.admin .product-hide-btn.hide {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.admin .product-hide-btn.hide:hover {
+  background: #fde68a;
+  color: #92400e;
+}
+
+.admin .product-hide-btn.unhide {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.admin .product-hide-btn.unhide:hover {
+  background: #bbf7d0;
+  color: #166534;
+}
+
+/* Hidden product row — dimmed to indicate it's not visible to customers */
+.admin .product-row-hidden td {
+  opacity: 0.55;
+}
+
+.admin .product-row-hidden:hover td {
+  opacity: 0.75;
+}
+
+/* Hidden badge shown next to status */
+.admin .hidden-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 2px 8px;
+  background: #fef3c7;
+  color: #b45309;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
 }

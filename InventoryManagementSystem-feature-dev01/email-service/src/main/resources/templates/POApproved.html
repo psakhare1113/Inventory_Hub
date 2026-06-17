@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Purchase Order Approved</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f4; font-family: Arial, sans-serif;">
+
+<table align="center" width="100%" cellpadding="0" cellspacing="0"
+       style="max-width:600px; background-color:#ffffff; margin:20px auto; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.05);">
+
+    <!-- Header -->
+    <tr>
+        <td style="background-color:#1a5276; padding:20px; text-align:center;">
+            <img src="cid:logo" alt="Logo" style="height:60px;">
+            <h1 style="color:#ffffff; margin:10px 0 0; font-size:20px;">Warehouse Management System</h1>
+        </td>
+    </tr>
+
+    <!-- Alert Banner -->
+    <tr>
+        <td style="background-color:#d4efdf; padding:16px 30px; border-left:4px solid #27ae60;">
+            <p style="margin:0; font-size:16px; font-weight:bold; color:#1e8449;">
+                📦 New Purchase Order Approved — Action Required
+            </p>
+        </td>
+    </tr>
+
+    <!-- Body -->
+    <tr>
+        <td style="padding:30px; color:#333333;">
+            <p style="font-size:15px;">Dear <strong>Warehouse Manager</strong>,</p>
+
+            <p style="font-size:14px; color:#555;">
+                A new Purchase Order has been <strong style="color:#27ae60;">approved</strong> by the Admin.
+                Please review the details below and prepare for receiving.
+            </p>
+
+            <!-- PO Details Table -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background-color:#f8f9fa; border-radius:8px; padding:20px; margin:20px 0; border:1px solid #e0e0e0;">
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777; width:40%;">PO Number</td>
+                    <td style="padding:8px 0; font-size:14px; font-weight:bold; color:#1a5276;">${poNumber}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Supplier</td>
+                    <td style="padding:8px 0; font-size:14px; color:#333;">${supplierName}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Expected Delivery</td>
+                    <td style="padding:8px 0; font-size:14px; color:#333;">${expectedDate}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Total Amount</td>
+                    <td style="padding:8px 0; font-size:14px; font-weight:bold; color:#333;">${totalAmount}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Total Items</td>
+                    <td style="padding:8px 0; font-size:14px; color:#333;">${totalItems} line item(s)</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Status</td>
+                    <td style="padding:8px 0;">
+                        <span style="background-color:#d4efdf; color:#1e8449; padding:3px 12px; border-radius:12px; font-size:12px; font-weight:bold;">
+                            ✅ APPROVED
+                        </span>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Action Steps -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background-color:#eaf4fb; border-radius:8px; padding:20px; margin:20px 0; border-left:4px solid #2980b9;">
+                <tr>
+                    <td>
+                        <p style="margin:0 0 10px; font-size:14px; font-weight:bold; color:#1a5276;">📋 Next Steps for You:</p>
+                        <ol style="margin:0; padding-left:20px; font-size:13px; color:#555; line-height:1.8;">
+                            <li>Login to the Warehouse Dashboard</li>
+                            <li>Go to <strong>GRN Tab</strong> → Wait for RECEIVING clerk to create GRN</li>
+                            <li>Once GRN is created, <strong>Inspect</strong> the received goods</li>
+                            <li>Complete <strong>Putaway</strong> to assign bin locations</li>
+                            <li>Inventory will be automatically updated after putaway</li>
+                        </ol>
+                    </td>
+                </tr>
+            </table>
+
+            <p style="font-size:13px; color:#888; margin-top:20px;">
+                This is an automated notification from the Warehouse Management System.
+                Please do not reply to this email.
+            </p>
+        </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+        <td style="background-color:#232F3E; padding:16px; text-align:center;">
+            <p style="margin:0; color:#aaa; font-size:12px;">
+                © 2026 PixelBloom Digital — Warehouse Management System
+            </p>
+        </td>
+    </tr>
+
+</table>
+</body>
+</html>

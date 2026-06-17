@@ -25,6 +25,11 @@ public class Shipment {
     private Long customerId;
     private String shippingAddress;
     private String status;
+    private String trackingNumber;
+    private String courierPartner;
+    private Double cost;
     private LocalDateTime createdAt;
+    private LocalDateTime packedAt;
+    private LocalDateTime shippedAt;
     private LocalDateTime deliveredAt;
 }

@@ -187,7 +187,9 @@
         <div class="box">
             <strong>Shipping Barcode</strong>
             <div class="barcode">
-                BARCODE IMAGE PLACEHOLDER
+                <img src="${shippingBarcode}" alt="Shipping Barcode" style="max-width:180px; display:block; margin:8px auto;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                <span style="display:none; font-size:11px; color:#999;">Barcode not available</span>
+                <div style="font-size:11px; color:#555; margin-top:4px;">${shippingBarcodeText}</div>
             </div>
         </div>
     </div>

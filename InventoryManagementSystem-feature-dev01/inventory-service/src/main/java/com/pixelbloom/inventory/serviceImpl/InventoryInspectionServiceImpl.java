@@ -134,7 +134,12 @@ public class InventoryInspectionServiceImpl implements InventoryInspectionServic
         returnRecord.setInspection(inspection);
         returnRecord.setApproved(Boolean.TRUE.equals(approved));
         returnRecord.setStatus(returnStatus);
-        returnRecord.setRejectionReason(request.getRejectionReason());
+        
+        // Only set rejection reason if provided and not approved
+        if (!Boolean.TRUE.equals(approved) && request.getRejectionReason() != null) {
+            returnRecord.setRejectionReason(request.getRejectionReason());
+        }
+        
         returnRecord.setReturnReference(
                 returnRecord.getReturnReference() != null
                         ? returnRecord.getReturnReference()
@@ -235,10 +240,11 @@ public class InventoryInspectionServiceImpl implements InventoryInspectionServic
                 .status(ReturnStatus.RETURN_INITIATED)
                 .approved(false)
                 .returnReason(request.getReturnReason())
-                .damageDeclared(request.getDamageDeclared())
+                .damageDeclared(request.getDamageDeclared() != null ? request.getDamageDeclared() : false)
                 .damageReason(request.getDamageReason())
                 .images(request.getImages())
                 .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
         returnRepository.save(returnRecord);
 
@@ -252,6 +258,38 @@ public class InventoryInspectionServiceImpl implements InventoryInspectionServic
                 inventory.getId(), ReturnStatus.RETURN_INITIATED, returnRecord.getId());
 
         return new SuccessResponseDTO(orderNumber, "Return initiated successfully for " + barcode);
+    }
+
+    @Override
+    @Transactional
+    public SuccessResponseDTO updateReturnInspectionDetails(orderInspectionRequest request) {
+        String barcode = request.getBarcode();
+        String orderNumber = request.getOrderNumber();
+
+        // Find the return record
+        InventoryReturn returnRecord = returnRepository.findByOrderNumberAndBarcode(orderNumber, barcode)
+                .orElseThrow(() -> new RuntimeException("Return record not found for order: " + orderNumber + ", barcode: " + barcode));
+
+        // Update inspection details
+        returnRecord.setApproved(request.getApproved() != null ? request.getApproved() : false);
+        returnRecord.setInspectorRemarks(request.getInspectorRemarks());
+        returnRecord.setItemCondition(request.getItemCondition());
+        returnRecord.setInspectedBy(request.getInspectedBy());
+        returnRecord.setInspectedAt(java.time.LocalDateTime.now());
+        
+        // Update images if provided
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            returnRecord.setImages(request.getImages());
+        }
+        
+        returnRecord.setUpdatedAt(java.time.LocalDateTime.now());
+        returnRepository.save(returnRecord);
+
+        log.info("Inspection details updated for order: {}, barcode: {}, condition: {}, remarks: {}, images: {}", 
+            orderNumber, barcode, request.getItemCondition(), request.getInspectorRemarks(), 
+            request.getImages() != null ? request.getImages().size() : 0);
+
+        return new SuccessResponseDTO(orderNumber, "Inspection details updated successfully for " + barcode);
     }
 
 }

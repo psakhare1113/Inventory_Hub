@@ -257,10 +257,38 @@
   padding: 1rem 0.75rem;
 }
 
+.cmp-customer-id {
+  font-weight: 600;
+  color: #3b82f6;
+  font-size: 14px;
+}
+
 .cmp-user-cell {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.cmp-user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cmp-user-name {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.cmp-user-email {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.cmp-user-phone {
+  color: #9ca3af;
+  font-size: 12px;
 }
 
 .cmp-avatar {
@@ -274,11 +302,6 @@
   color: #475569;
   font-weight: 500;
   font-size: 0.875rem;
-}
-
-.cmp-user-name {
-  font-weight: 500;
-  color: #0f172a;
 }
 
 .cmp-contact-email {
@@ -317,6 +340,16 @@
 .cmp-badge-user {
   background: #f1f5f9;
   color: #475569;
+}
+
+.cmp-badge-delivery {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.cmp-badge-warehouse {
+  background: #fef3c7;
+  color: #b45309;
 }
 
 .cmp-badge-active {
@@ -616,3 +649,62 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Toast Notifications ─────────────────────────────────────────────────── */
+.cmp-toast-container {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.cmp-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  animation: cmp-toast-in 0.25s ease;
+}
+
+.cmp-toast-success { background: #10b981; }
+.cmp-toast-error   { background: #ef4444; }
+
+@keyframes cmp-toast-in {
+  from { opacity: 0; transform: translateX(2rem); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Busy row (action in progress) ──────────────────────────────────────── */
+.cmp-row-busy {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ── Admin avatar accent ─────────────────────────────────────────────────── */
+.cmp-avatar-admin {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+}
+
+.cmp-avatar-delivery {
+  background: linear-gradient(135deg, #1d4ed8, #0ea5e9) !important;
+}
+
+.cmp-avatar-warehouse {
+  background: linear-gradient(135deg, #d97706, #f59e0b) !important;
+}
+
+/* ── Stat icons with content ─────────────────────────────────────────────── */
+.cmp-stat-icon { display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+.cmp-stat-icon-primary { color: #3b82f6; }
+.cmp-stat-icon-violet  { color: #7c3aed; }
+.cmp-stat-icon-emerald { color: #10b981; }
+.cmp-stat-icon-amber   { color: #f59e0b; }

@@ -1,356 +1,494 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, FolderOpen } from 'lucide-react';
-import { categoriesApi, subcategoriesApi } from '../../services/apiService';
+import { Plus, Edit, Trash2, Search, ChevronRight, ChevronDown, FolderOpen, Folder, Tag } from 'lucide-react';
+import { categoriesApi } from '../../services/apiService';
+import { categoryFieldTemplates } from '../../services/categoryFieldTemplates';
+import { imsService } from '../../services/imsApi';
 import '../css/Categories.css';
+
+const BASE_URL = 'http://localhost:9999';
 
 export default function Categories() {
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
-  const [sliderCategories, setSliderCategories] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [subSubCategories, setSubSubCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [expandedSubCategories, setExpandedSubCategories] = useState({});
+
   const [isOpen, setIsOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [parentId, setParentId] = useState('');
-  const [viewType, setViewType] = useState('categories');
+  const [modalMode, setModalMode] = useState('create');
   const [editingItem, setEditingItem] = useState(null);
-  const handleEditCategory = (item) => {
-    setName(item.name);
-    setDescription(item.description || '');
-    setImageUrl(item.imageUrl || '');
-    setParentId(item.categoryId || '');
-    setEditingItem(item);
-    setIsOpen(true);
-  };
+  const [editingType, setEditingType] = useState('');
 
-  const updateCategory = async () => {
-    if (!name.trim()) {
-      alert('Please enter category name');
-      return;
-    }
+  const [name, setName] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [parentCategoryId, setParentCategoryId] = useState('');
+  const [parentSubcategoryId, setParentSubcategoryId] = useState('');
+  const [addType, setAddType] = useState('category');
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [availableTemplates] = useState(categoryFieldTemplates.getAvailableTemplates());
 
+  useEffect(() => { fetchAll(); }, []);
+
+  const fetchAll = async () => {
+    setLoading(true);
     try {
-      if (editingItem.categoryId) {
-        await subcategoriesApi.update(editingItem.id, parseInt(parentId), name.trim());
-      } else {
-        const response = await fetch(`http://localhost:9999/api/categories/${editingItem.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name.trim(), imageUrl: imageUrl.trim() })
-        });
-        if (!response.ok) throw new Error('Update failed');
-      }
-      await fetchCategories();
-      setIsOpen(false);
-      setEditingItem(null);
-      setName('');
-      setDescription('');
-      setImageUrl('');
-      setParentId('');
-      alert('Updated successfully!');
-    } catch (error) {
-      console.error('Error updating:', error);
-      alert('Error updating. Please try again.');
-    }
-  };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
+      const fetchJson = async (url) => {
+        const res = await fetch(url);
+        if (!res.ok) return [];
+        return res.json();
+      };
       const [cats, subs] = await Promise.all([
-        categoriesApi.getAll(),
-        subcategoriesApi.getAll()
+        fetchJson(`${BASE_URL}/api/categories`),
+        fetchJson(`${BASE_URL}/api/subcategories`),
       ]);
-      // Sort categories by ID to show newest first
-      const sortedCats = cats.sort((a, b) => b.id - a.id);
-      const sortedSubs = subs.sort((a, b) => b.id - a.id);
-      
-      setCategories(sortedCats);
-      setSliderCategories(sortedCats);
-      setSubCategories(sortedSubs);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
+
+      setCategories([...cats].sort((a, b) => a.id - b.id));
+
+      // parentSubcategoryId null/undefined = level-2 subcategory
+      // parentSubcategoryId set = level-3 sub-subcategory
+      const normalSubs = subs.filter(s => s.parentSubcategoryId == null);
+      const subSubs    = subs.filter(s => s.parentSubcategoryId != null);
+      setSubCategories(normalSubs);
+      setSubSubCategories(subSubs);
+    } catch (err) {
+      console.error('Error fetching:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const createCategory = async () => {
-    if (!name.trim()) {
-      alert('Please enter category name');
-      return;
-    }
-
+  // ─── Image Upload ─────────────────────────────────────────────────────────
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
     try {
-      let result;
-      if (parentId) {
-        result = await subcategoriesApi.create(parseInt(parentId), name.trim());
-        alert('Subcategory created successfully!');
-      } else {
-        const response = await fetch('http://localhost:9999/api/categories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name.trim(), imageUrl: imageUrl.trim() })
-        });
-        if (!response.ok) throw new Error('Create failed');
-        result = await response.json();
-        alert('Category created successfully!');
-      }
-      
-      await fetchCategories();
-      setIsOpen(false);
-      setName('');
-      setImageUrl('');
-      setParentId('');
-      
-      console.log('Category created:', result);
-    } catch (error) {
-      console.error('Error creating category:', error);
-      alert('Error creating category. Please try again.');
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('http://localhost:9999/api/images/upload', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      setImageUrl(data.imageUrl);
+    } catch (err) {
+      alert('Image upload failed: ' + err.message);
+    } finally {
+      setUploading(false);
     }
   };
 
-  const deleteCategory = async (id) => {
-    const itemType = viewType === 'categories' ? 'category' : 'subcategory';
-    if (window.confirm(`Are you sure you want to delete this ${itemType}?`)) {
-      try {
-        if (viewType === 'categories') {
-          await categoriesApi.delete(id);
-        } else {
-          await subcategoriesApi.delete(id);
+  // ─── Tree Toggle ──────────────────────────────────────────────────────────
+  const toggleCategory    = (id) => setExpandedCategories(p => ({ ...p, [id]: !p[id] }));
+  const toggleSubCategory = (id) => setExpandedSubCategories(p => ({ ...p, [id]: !p[id] }));
+
+  // ─── Modal helpers ────────────────────────────────────────────────────────
+  const openCreateModal = (type, catId = '', subId = '') => {
+    setModalMode('create'); setAddType(type);
+    setName(''); setImageUrl('');
+    setParentCategoryId(catId); setParentSubcategoryId(subId);
+    setEditingItem(null); setEditingType(''); setSelectedTemplate('');
+    setIsOpen(true);
+  };
+
+  const openEditModal = (item, type) => {
+    setModalMode('edit'); setEditingItem(item); setEditingType(type); setAddType(type);
+    setName(item.name); setImageUrl(item.imageUrl || '');
+    setParentCategoryId(item.categoryId ? String(item.categoryId) : '');
+    setParentSubcategoryId(item.parentSubcategoryId ? String(item.parentSubcategoryId) : '');
+    setIsOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsOpen(false); setEditingItem(null);
+    setName(''); setImageUrl(''); setParentCategoryId(''); setParentSubcategoryId('');
+  };
+
+  // ─── CRUD ─────────────────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    if (!name.trim()) { alert('Please enter a name'); return; }
+    try {
+      if (modalMode === 'create') {
+        if (addType === 'category') {
+          const res = await fetch(`${BASE_URL}/api/categories`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name.trim(), imageUrl: imageUrl.trim() }),
+          });
+          if (!res.ok) throw new Error('Create failed');
+          const result = await res.json();
+          if (result?.id) await createCategoryAttributes(result.id, name.trim());
+
+        } else if (addType === 'subcategory') {
+          if (!parentCategoryId) { alert('Please select a parent category'); return; }
+          const res = await fetch(`${BASE_URL}/api/subcategories`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categoryId: parseInt(parentCategoryId), name: name.trim(), imageUrl: imageUrl.trim() }),
+          });
+          if (!res.ok) throw new Error('Create subcategory failed');
+
+        } else if (addType === 'subsubcategory') {
+          if (!parentSubcategoryId) { alert('Please select a parent subcategory'); return; }
+          const res = await fetch(`${BASE_URL}/api/subcategories`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: name.trim(),
+              imageUrl: imageUrl.trim(),
+              categoryId: parentCategoryId ? parseInt(parentCategoryId) : null,
+              parentSubcategoryId: parseInt(parentSubcategoryId),
+            }),
+          });
+          if (!res.ok) throw new Error('Create sub-subcategory failed');
         }
-        await fetchCategories();
-        alert(`${itemType} deleted successfully!`);
-      } catch (error) {
-        console.error('Error deleting category:', error);
-        alert('Error deleting. Please try again.');
+      } else {
+        // EDIT
+        if (editingType === 'category') {
+          const res = await fetch(`${BASE_URL}/api/categories/${editingItem.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name.trim(), imageUrl: imageUrl.trim() }),
+          });
+          if (!res.ok) throw new Error('Update failed');
+        } else {
+          const res = await fetch(`${BASE_URL}/api/subcategories/${editingItem.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              categoryId: parseInt(parentCategoryId) || editingItem.categoryId,
+              name: name.trim(),
+              imageUrl: imageUrl.trim(),
+            }),
+          });
+          if (!res.ok) throw new Error('Update subcategory failed');
+        }
       }
+      await fetchAll();
+      closeModal();
+    } catch (err) {
+      console.error(err);
+      alert('Error: ' + err.message);
     }
   };
 
-  const getCategoryName = (categoryId) => {
-    const category = categories.find(cat => cat.id === categoryId);
-    return category ? category.name : 'Unknown';
+  const handleDelete = async (id, type) => {
+    const label = type === 'category' ? 'category' : type === 'subcategory' ? 'subcategory' : 'sub-subcategory';
+    if (!window.confirm(`Delete this ${label}?`)) return;
+    try {
+      if (type === 'category') {
+        await categoriesApi.delete(id);
+      } else {
+        const res = await fetch(`${BASE_URL}/api/subcategories/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+      }
+      await fetchAll();
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
+    }
   };
 
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % sliderCategories.length);
+  const createCategoryAttributes = async (categoryId, categoryName) => {
+    try {
+      const template = categoryFieldTemplates.getTemplate(selectedTemplate || categoryName);
+      if (template?.length > 0) {
+        await imsService.products.createCategoryAttributes(categoryId, template.map(f => f.name));
+      }
+    } catch (err) { console.warn('Attributes skipped:', err); }
   };
 
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + sliderCategories.length) % sliderCategories.length);
-  };
-
-  const exportToPDF = () => {
-    const printContent = `
-      <h2>Categories List Report</h2>
-      <table border="1" style="border-collapse: collapse; width: 100%;">
-        <thead>
-          <tr>
-            <th>ID</th><th>Name</th><th>Type</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${filteredCategories.map(category => `
-            <tr>
-              <td>${category.id}</td>
-              <td>${category.name}</td>
-              <td>${viewType === 'categories' ? 'Main Category' : getCategoryName(category.categoryId)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-    
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.print();
-  };
-
-  const exportToExcel = () => {
-    console.log('Export to Excel functionality');
-  };
-
-  const currentData = viewType === 'categories' ? categories : subCategories;
-  const filteredCategories = currentData.filter(category =>
-    category.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  // ─── Search filter ────────────────────────────────────────────────────────
+  const matchesSearch = (n) => n?.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredCategories = categories.filter(c =>
+    !searchTerm ||
+    matchesSearch(c.name) ||
+    subCategories.filter(s => s.categoryId === c.id).some(s =>
+      matchesSearch(s.name) ||
+      subSubCategories.filter(ss => ss.parentSubcategoryId === s.id).some(ss => matchesSearch(ss.name))
+    )
   );
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="admin categories-page">
-      <div className="categories-header">
-        <h2>Categories</h2>
-        <button className="add-category-btn" onClick={() => setIsOpen(true)}>
-          <Plus size={20} />
-          Add Category
+
+      {/* ── Header ── */}
+      <div className="cat-page-header">
+        <div className="cat-page-title">
+          <FolderOpen size={24} className="cat-page-icon" />
+          <h2>Categories</h2>
+        </div>
+        <button className="cat-add-btn" onClick={() => openCreateModal('category')}>
+          <Plus size={16} /> Add Category
         </button>
       </div>
 
-      <div className="categories-card">
-        <div className="categories-card-header">
-          <h3>Product Categories</h3>
+      {/* ── Stats ── */}
+      <div className="cat-stats-row">
+        <div className="cat-stat-card cat-stat-purple">
+          <span className="cat-stat-num">{categories.length}</span>
+          <span className="cat-stat-label">Categories</span>
         </div>
-
-        <div className="categories-search">
-          <div className="categories-controls">
-            <div className="view-toggle">
-              <button 
-                className={`toggle-btn ${viewType === 'categories' ? 'active' : ''}`}
-                onClick={() => setViewType('categories')}
-              >
-                Main Categories ({categories.length})
-              </button>
-              <button 
-                className={`toggle-btn ${viewType === 'subcategories' ? 'active' : ''}`}
-                onClick={() => setViewType('subcategories')}
-              >
-                Subcategories ({subCategories.length})
-              </button>
-            </div>
-            <div className="categories-export-buttons">
-              <button className="categories-pdf-btn" onClick={exportToPDF}>
-                📄 PDF
-              </button>
-              <button className="categories-excel-btn" onClick={exportToExcel}>
-                📊 Excel
-              </button>
-            </div>
-          </div>
-          <Search className="search-icon" size={20} />
-          <input
-            type="text"
-            placeholder="Search categories..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="cat-stat-card cat-stat-blue">
+          <span className="cat-stat-num">{subCategories.length}</span>
+          <span className="cat-stat-label">Subcategories</span>
         </div>
-
-        <table className="categories-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Image</th>
-              <th>Name</th>
-              <th>{viewType === 'categories' ? 'Type' : 'Parent Category'}</th>
-              <th className="category-action-col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCategories.map((item) => (
-              <tr key={item.id}>
-                <td>{item.id}</td>
-                <td>
-                  {viewType === 'categories' && item.imageUrl ? (
-                    <img 
-                      src={item.imageUrl} 
-                      alt={item.name} 
-                      style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#e5e7eb' }}></div>
-                  )}
-                </td>
-                <td>{item.name}</td>
-                <td>
-                  {viewType === 'categories' ? 
-                    'Main Category' : 
-                    getCategoryName(item.categoryId)
-                  }
-                </td>
-                <td className="category-action-col">
-                  <div className="category-action-buttons">
-                    <Edit 
-                      className="category-edit-icon" 
-                      size={16} 
-                      onClick={() => handleEditCategory(item)}
-                      style={{cursor: 'pointer', color: '#007bff', marginRight: '10px'}}
-                      title="Edit"
-                    />
-                    <Trash2 
-                      className="category-delete-icon" 
-                      size={16} 
-                      onClick={() => deleteCategory(item.id)}
-                      style={{cursor: 'pointer', color: '#dc3545'}}
-                      title="Delete"
-                    />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="cat-stat-card cat-stat-green">
+          <span className="cat-stat-num">{subSubCategories.length}</span>
+          <span className="cat-stat-label">Sub-Subcategories</span>
+        </div>
       </div>
 
-      {/* Add Category Modal */}
-      {isOpen && (
-        <div className="modal-overlay" onClick={() => setIsOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Add {viewType === 'categories' ? 'Category' : 'Subcategory'}</h3>
-              <button className="modal-close" onClick={() => setIsOpen(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Parent Category</label>
-                <select
-                  value={parentId}
-                  onChange={(e) => setParentId(e.target.value)}
-                >
-                  <option value="">Select Parent Category (Optional)</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Category Name</label>
-                <input 
-                  type="text" 
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter category name"
-                />
-              </div>
-              {!parentId && (
-                <div className="form-group">
-                  <label>Image URL</label>
-                  <input 
-                    type="text" 
-                    value={imageUrl} 
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="Enter image URL"
-                  />
-                  {imageUrl && (
-                    <div style={{ marginTop: '10px' }}>
-                      <img 
-                        src={imageUrl} 
-                        alt="Preview" 
-                        style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover' }}
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
+      {/* ── Search ── */}
+      <div className="cat-search-wrap">
+        <Search size={15} className="cat-search-icon" />
+        <input
+          type="text"
+          placeholder="Search categories, subcategories..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="cat-search-input"
+        />
+      </div>
+
+      {/* ── Tree Card ── */}
+      <div className="cat-tree-card">
+        <div className="cat-tree-card-header">
+          <span>Category Tree</span>
+          <span className="cat-tree-hint">Hover on a row to see actions</span>
+        </div>
+
+        {loading ? (
+          <div className="cat-state-msg">
+            <div className="cat-spinner" />
+            Loading categories...
+          </div>
+        ) : filteredCategories.length === 0 ? (
+          <div className="cat-state-msg">
+            <FolderOpen size={40} style={{ color: '#c4b5fd', marginBottom: 8 }} />
+            <p>No categories found</p>
+            <button className="cat-add-btn" style={{ marginTop: 8 }} onClick={() => openCreateModal('category')}>
+              <Plus size={14} /> Add your first category
+            </button>
+          </div>
+        ) : (
+          <div className="cat-tree">
+            {filteredCategories.map(cat => {
+              const catSubs   = subCategories.filter(s => s.categoryId === cat.id);
+              const isExpanded = expandedCategories[cat.id];
+
+              return (
+                <div key={cat.id} className="cat-level-block">
+
+                  {/* ── Level 1 — Category ── */}
+                  <div className="cat-row cat-row-l1">
+                    <button
+                      className={`cat-toggle ${catSubs.length === 0 ? 'cat-toggle-disabled' : ''}`}
+                      onClick={() => catSubs.length > 0 && toggleCategory(cat.id)}
+                    >
+                      {catSubs.length > 0
+                        ? (isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />)
+                        : <span className="cat-toggle-dot" />
+                      }
+                    </button>
+
+                    <div className="cat-thumb-wrap">
+                      {cat.imageUrl
+                        ? <img src={cat.imageUrl} alt={cat.name} className="cat-thumb cat-thumb-l1" onError={e => e.target.style.display='none'} />
+                        : <div className="cat-thumb-icon cat-thumb-l1"><FolderOpen size={18} /></div>
+                      }
                     </div>
-                  )}
+
+                    <span className="cat-name cat-name-l1">{cat.name}</span>
+                    <span className="cat-pill cat-pill-purple">Category</span>
+                    {catSubs.length > 0 && <span className="cat-count">{catSubs.length}</span>}
+
+                    <div className="cat-row-actions">
+                      <button className="cat-action-btn cat-action-edit" onClick={() => openEditModal(cat, 'category')}>
+                        <Edit size={12} />
+                      </button>
+                      <button className="cat-action-btn cat-action-del" onClick={() => handleDelete(cat.id, 'category')}>
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ── Level 2 — Subcategories ── */}
+                  {isExpanded && catSubs.map(sub => {
+                    const subSubs      = subSubCategories.filter(ss => ss.parentSubcategoryId === sub.id);
+                    const isSubExpanded = expandedSubCategories[sub.id];
+
+                    return (
+                      <div key={sub.id} className="cat-level-block cat-level-block-l2">
+
+                        <div className="cat-row cat-row-l2">
+                          <button
+                            className={`cat-toggle ${subSubs.length === 0 ? 'cat-toggle-disabled' : ''}`}
+                            onClick={() => subSubs.length > 0 && toggleSubCategory(sub.id)}
+                          >
+                            {subSubs.length > 0
+                              ? (isSubExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />)
+                              : <span className="cat-toggle-dot" />
+                            }
+                          </button>
+
+                          <div className="cat-thumb-wrap">
+                            {sub.imageUrl
+                              ? <img src={sub.imageUrl} alt={sub.name} className="cat-thumb cat-thumb-l2" onError={e => e.target.style.display='none'} />
+                              : <div className="cat-thumb-icon cat-thumb-l2"><Folder size={14} /></div>
+                            }
+                          </div>
+
+                          <span className="cat-name cat-name-l2">{sub.name}</span>
+                          <span className="cat-pill cat-pill-blue">Subcategory</span>
+                          {subSubs.length > 0 && <span className="cat-count">{subSubs.length}</span>}
+
+                          <div className="cat-row-actions">
+                            <button className="cat-action-btn cat-action-edit" onClick={() => openEditModal(sub, 'subcategory')}>
+                              <Edit size={11} />
+                            </button>
+                            <button className="cat-action-btn cat-action-del" onClick={() => handleDelete(sub.id, 'subcategory')}>
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* ── Level 3 — Sub-Subcategories ── */}
+                        {isSubExpanded && subSubs.map(ss => (
+                          <div key={ss.id} className="cat-row cat-row-l3">
+                            <span className="cat-toggle-dot cat-toggle-dot-leaf" />
+
+                            <div className="cat-thumb-wrap">
+                              {ss.imageUrl
+                                ? <img src={ss.imageUrl} alt={ss.name} className="cat-thumb cat-thumb-l3" onError={e => e.target.style.display='none'} />
+                                : <div className="cat-thumb-icon cat-thumb-l3"><Tag size={12} /></div>
+                              }
+                            </div>
+
+                            <span className="cat-name cat-name-l3">{ss.name}</span>
+                            <span className="cat-pill cat-pill-green">Brand</span>
+
+                            <div className="cat-row-actions">
+                              <button className="cat-action-btn cat-action-edit" onClick={() => openEditModal(ss, 'subsubcategory')}>
+                                <Edit size={11} />
+                              </button>
+                              <button className="cat-action-btn cat-action-del" onClick={() => handleDelete(ss.id, 'subsubcategory')}>
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Modal ── */}
+      {isOpen && (
+        <div className="cat-modal-overlay" onClick={closeModal}>
+          <div className="cat-modal" onClick={e => e.stopPropagation()}>
+
+            <div className="cat-modal-header">
+              <h3>
+                {modalMode === 'create'
+                  ? `Add ${addType === 'category' ? 'Category' : addType === 'subcategory' ? 'Subcategory' : 'Brand / Sub-Subcategory'}`
+                  : `Edit ${editingType === 'category' ? 'Category' : editingType === 'subcategory' ? 'Subcategory' : 'Brand'}`
+                }
+              </h3>
+              <button className="cat-modal-close" onClick={closeModal}>×</button>
+            </div>
+
+            <div className="cat-modal-body">
+
+              {/* Type tabs — create only */}
+              {modalMode === 'create' && (
+                <div className="cat-form-group">
+                  <label>Type</label>
+                  <div className="cat-type-tabs">
+                    {['category', 'subcategory', 'subsubcategory'].map(t => (
+                      <button
+                        key={t}
+                        className={`cat-type-tab ${addType === t ? 'active' : ''}`}
+                        onClick={() => { setAddType(t); if (t === 'category') { setParentCategoryId(''); setParentSubcategoryId(''); } }}
+                      >
+                        {t === 'category' ? '📁 Category' : t === 'subcategory' ? '📂 Subcategory' : '🏷️ Brand'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
-              <button 
-                className="create-btn" 
-                onClick={editingItem ? updateCategory : createCategory}
+
+              {/* Parent Category */}
+              {(addType === 'subcategory' || addType === 'subsubcategory') && (
+                <div className="cat-form-group">
+                  <label>Parent Category <span className="cat-required">*</span></label>
+                  <select value={parentCategoryId} onChange={e => { setParentCategoryId(e.target.value); setParentSubcategoryId(''); }}>
+                    <option value="">— Select Category —</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Parent Subcategory */}
+              {addType === 'subsubcategory' && (
+                <div className="cat-form-group">
+                  <label>Parent Subcategory <span className="cat-required">*</span></label>
+                  <select value={parentSubcategoryId} onChange={e => setParentSubcategoryId(e.target.value)}>
+                    <option value="">— Select Subcategory —</option>
+                    {subCategories
+                      .filter(s => !parentCategoryId || s.categoryId === parseInt(parentCategoryId))
+                      .map(s => <option key={s.id} value={s.id}>{s.name}</option>)
+                    }
+                  </select>
+                </div>
+              )}
+
+              {/* Name */}
+              <div className="cat-form-group">
+                <label>Name <span className="cat-required">*</span></label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder={addType === 'category' ? 'e.g. Electronics' : addType === 'subcategory' ? 'e.g. Mobile Phones' : 'e.g. Samsung'}
+                  autoFocus
+                />
+              </div>
+
+              {/* Image */}
+              <div className="cat-form-group">
+                <label>Image <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
+                <div className="cat-img-row">
+                  <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploading} id="cat-img-upload" style={{ display: 'none' }} />
+                  <label htmlFor="cat-img-upload" className={`cat-upload-btn ${uploading ? 'disabled' : ''}`}>
+                    {uploading ? '⏳ Uploading...' : '📁 Upload'}
+                  </label>
+                  <input
+                    type="text"
+                    value={imageUrl}
+                    onChange={e => setImageUrl(e.target.value)}
+                    placeholder="or paste image URL"
+                    className="cat-url-input"
+                  />
+                </div>
+                {imageUrl && (
+                  <img src={imageUrl} alt="preview" className="cat-img-preview" onError={e => e.target.style.display='none'} />
+                )}
+              </div>
+
+              <button
+                className="cat-submit-btn"
+                onClick={handleSubmit}
                 disabled={!name.trim()}
-                style={{
-                  backgroundColor: name.trim() ? '#007bff' : '#ccc',
-                  cursor: name.trim() ? 'pointer' : 'not-allowed'
-                }}
               >
-                {editingItem ? 'Update' : 'Create'}
+                {modalMode === 'create' ? '+ Create' : '✓ Update'}
               </button>
             </div>
           </div>

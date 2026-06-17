@@ -115,6 +115,13 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
                                       @Param("conditionStatus") ConditionStatus conditionStatus,
                                       Pageable pageable);
 
+    @Query("SELECT i FROM Inventory i WHERE i.productId = :productId AND i.inventoryStatus = :inventoryStatus AND i.platformStatus = :platformStatus AND i.conditionStatus = :conditionStatus ORDER BY i.id")
+    List<Inventory> findTopNAvailableByProductOnly(@Param("productId") Long productId,
+                                                   @Param("inventoryStatus") InventoryStatus inventoryStatus,
+                                                   @Param("platformStatus") PlatformStatus platformStatus,
+                                                   @Param("conditionStatus") ConditionStatus conditionStatus,
+                                                   Pageable pageable);
+
 
     boolean existsByBarcode(String barcode);
 }

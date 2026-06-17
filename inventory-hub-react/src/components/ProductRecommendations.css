@@ -1,0 +1,286 @@
+/* ═══════════════════════════════════════════════════════════════
+   ProductRecommendations.css
+   Amazon / Myntra style — Related & Relevant product sections
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Root wrapper ─────────────────────────────────────────────── */
+.rec-root {
+  margin-top: 3rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+/* ── Section ──────────────────────────────────────────────────── */
+.rec-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.rec-section__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rec-section__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rec-section__icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.rec-section__title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.rec-section__sub {
+  font-size: 0.82rem;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* ── Scroll wrapper (arrows + row) ───────────────────────────── */
+.rec-scroll-wrap {
+  position: relative;
+}
+
+/* ── Arrow buttons ────────────────────────────────────────────── */
+.rec-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  font-size: 1.4rem;
+  line-height: 1;
+  color: #374151;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.rec-arrow:hover {
+  background: #f9fafb;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+}
+.rec-arrow--left  { left:  -18px; }
+.rec-arrow--right { right: -18px; }
+
+/* ── Horizontal scroll row ────────────────────────────────────── */
+.rec-row {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.5rem;
+  /* hide scrollbar */
+  scrollbar-width: none;
+}
+.rec-row::-webkit-scrollbar { display: none; }
+
+/* Loading state */
+.rec-row--loading {
+  overflow: hidden;
+}
+
+/* ── Product Card ─────────────────────────────────────────────── */
+.rec-card {
+  flex: 0 0 200px;
+  scroll-snap-align: start;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+.rec-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.10);
+  border-color: #d1d5db;
+}
+
+/* Discount badge */
+.rec-card__badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+  z-index: 2;
+}
+
+/* Image */
+.rec-card__img-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #f9fafb;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.rec-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.35s ease;
+}
+.rec-card:hover .rec-card__img {
+  transform: scale(1.06);
+}
+.rec-card__img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: #d1d5db;
+}
+
+/* Body */
+.rec-card__body {
+  padding: 0.75rem 0.85rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.rec-card__name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+
+.rec-card__rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.rec-card__rating-val {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.rec-card__price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+.rec-card__price {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111827;
+}
+.rec-card__original {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+/* Add to Cart button */
+.rec-card__btn {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0;
+  border-radius: 8px;
+  border: 1.5px solid #111827;
+  background: transparent;
+  color: #111827;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  letter-spacing: 0.01em;
+}
+.rec-card__btn:hover {
+  background: #111827;
+  color: #fff;
+}
+.rec-card__btn--added {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+.rec-card__btn--added:hover {
+  background: #15803d;
+  border-color: #15803d;
+}
+
+/* ── Skeleton Loader ──────────────────────────────────────────── */
+.rec-skeleton {
+  flex: 0 0 200px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+}
+.rec-skeleton__img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: rec-shimmer 1.4s infinite;
+}
+.rec-skeleton__line {
+  height: 12px;
+  margin: 10px 12px 0;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: rec-shimmer 1.4s infinite;
+}
+.rec-skeleton__line--wide  { width: calc(100% - 24px); }
+.rec-skeleton__line--short { width: 55%; margin-bottom: 12px; }
+
+@keyframes rec-shimmer {
+  0%   { background-position:  200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .rec-card        { flex: 0 0 160px; }
+  .rec-skeleton    { flex: 0 0 160px; }
+  .rec-arrow       { display: none; }
+  .rec-section__title { font-size: 1.1rem; }
+}

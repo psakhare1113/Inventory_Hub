@@ -26,8 +26,14 @@ public interface InventoryReservationRepository  extends JpaRepository<Inventory
 
     List<InventoryReservation> findByOrderNumberAndProductIdAndCategoryIdAndSubcategoryId(String orderNumber, Long productId, Long categoryId, Long subcategoryId);
 
-    Optional<InventoryReservation>
-    findByOrderNumberAndBarcode(String orderNumber, String barcode);
+    Optional<InventoryReservation> findByOrderNumberAndBarcode(String orderNumber, String barcode);
+
+    Optional<InventoryReservation> findByBarcode(String barcode);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM InventoryReservation ir WHERE ir.barcode = :barcode")
+    void deleteByBarcode(@Param("barcode") String barcode);
 
     @Modifying
     @Query("UPDATE InventoryReservation ir SET ir.reservationStatus = :status WHERE ir.orderNumber = :orderNumber AND ir.barcode = :barcode")

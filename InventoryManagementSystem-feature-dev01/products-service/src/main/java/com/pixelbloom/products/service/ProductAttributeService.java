@@ -9,10 +9,12 @@ import java.util.Map;
 public interface ProductAttributeService {
 
     Map<String, String> getAttributes(Long productId);
+    
+    List<ProductAttribute> getAttributesList(Long productId);
 
     void saveAttributes(Long productId, Map<String, String> attributes);
+    
+    void saveAttribute(ProductAttribute attribute);
 
     List<Long> filterProducts(Map<String, String> filters);
-
-    //ProductAttribute updateAttributes(Long productId, Map<String, String> attributes);
 }

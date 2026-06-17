@@ -23,4 +23,10 @@ public class orderInspectionRequest {
     private Boolean damageDeclared;
     private String damageReason;
     private List<String> images;
+    
+    // Inspection details
+    private Boolean approved;
+    private String inspectorRemarks;
+    private String itemCondition;
+    private String inspectedBy;
 }

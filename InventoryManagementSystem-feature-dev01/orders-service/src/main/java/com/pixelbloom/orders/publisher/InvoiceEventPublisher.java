@@ -18,18 +18,19 @@ import java.time.LocalDateTime;
 public class InvoiceEventPublisher {
     private final KafkaTemplate<String, InvoiceEvent> kafkaTemplateInvoice;
     private final OrderOutboxRepository outboxRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     public void publishInvoiceEvent(InvoiceEvent event) {
         try {
             log.info("Publishing invoice event for order: {}", event.getOrderNumber());
             kafkaTemplateInvoice.send("invoice-events", event.getOrderNumber(), event);
+            log.info("Invoice event published successfully for order: {}", event.getOrderNumber());
         } catch (Exception ex) {
             log.warn("Direct Kafka publish failed, storing in outbox: {}", ex.getMessage());
             storeInOutbox(event);
-            throw new RuntimeException("messaging failed", ex);
+            // Don't throw exception - make messaging optional for order creation
+            log.info("Invoice event stored in outbox for later processing");
         }
-
     }
 
 

@@ -23,4 +23,22 @@ public interface ProductService {
     ProductRefundEligibilityResponse checkRefundEligibility(Long productId, Long categoryId, Long subcategoryId);
     Boolean isProductRefundEligible(Long productId, Long categoryId, Long subcategoryId);
     List<ProductListingResponse> getAvailableProducts(Long productId, Long categoryId, Long subcategoryId, int requestedQuantity);
+
+    // ── Recommendations ──────────────────────────────────────────────────────
+    /** Related: same subcategory, ACTIVE, exclude current product, max `limit` results */
+    List<Product> getRelatedProducts(Long productId, Long subcategoryId, int limit);
+
+    /**
+     * Relevant: complementary products from two sources merged:
+     *   A) subcategory_complementary_map table (admin-defined)
+     *   B) product_attributes where name='complementarySubcategories' (tag-based)
+     * Both sources are unioned, deduplicated, and limited.
+     */
+    List<Product> getRelevantProducts(Long productId, Long categoryId, Long subcategoryId, int limit);
+
+    // ── Complementary Map CRUD (for Admin UI) ────────────────────────────────
+    com.pixelbloom.products.model.SubcategoryComplementaryMap addComplementaryMapping(Long subcategoryId, Long complementarySubcategoryId, String label);
+    void removeComplementaryMapping(Long subcategoryId, Long complementarySubcategoryId);
+    List<com.pixelbloom.products.model.SubcategoryComplementaryMap> getComplementaryMappings(Long subcategoryId);
+    List<com.pixelbloom.products.model.SubcategoryComplementaryMap> getAllComplementaryMappings();
 }

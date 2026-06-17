@@ -30,51 +30,83 @@ public class JwtValidationFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getPath().value();
 
-        // Allow public endpoints
-        if (path.startsWith("/api/auth/") || 
-            path.startsWith("/api/categories") || 
+        // Allow public endpoints without any token validation
+        if (path.startsWith("/api/auth/register") ||
+            path.startsWith("/api/auth/token") ||
+            path.startsWith("/api/auth/verify-otp") ||
+            path.startsWith("/api/auth/resend-otp") ||
+            path.startsWith("/api/auth/validate") ||
+            path.startsWith("/api/auth/isAdmin") ||
+            path.startsWith("/api/auth/createAdmin") ||
+            path.startsWith("/api/auth/user/profile") ||
+            // ── Delivery Boy Self-Registration (public — no token needed) ──
+            path.equals("/api/auth/delivery/apply") ||
+            path.startsWith("/api/auth/delivery/application/status") ||
+            // ── End Delivery Registration ──
+            path.startsWith("/api/auth/admin/customers") ||
+            path.startsWith("/api/auth/admin/get") ||
+            path.startsWith("/api/auth/admin/promote") ||
+            path.startsWith("/api/auth/admin/ensure-admin") ||
+            path.startsWith("/api/auth/admin/demote") ||
+            path.startsWith("/api/auth/admin/delete") ||
+            path.startsWith("/api/auth/admin/customer") ||
+            path.startsWith("/api/auth/admin/delivery-boy") ||
+            path.startsWith("/api/auth/admin/delivery-boys") ||
+            path.startsWith("/api/auth/isDeliveryBoy") ||
+            path.startsWith("/api/auth/customer") ||
+            path.startsWith("/api/categories") ||
             path.startsWith("/api/subcategories") ||
             path.startsWith("/api/products") ||
+            path.startsWith("/api/images") ||
             path.startsWith("/api/product-attributes") ||
             path.startsWith("/api/inventory") ||
-            path.startsWith("/api/orders") ||
-            path.startsWith("/api/analytics")) {
+            path.startsWith("/api/analytics") ||
+            // ── Warehouse staff order status updates (PACKER, PICKER, SHIPPING) ──
+            path.startsWith("/api/auth/admin/orders/")) {
             return chain.filter(exchange);
         }
 
-        // Extract and validate token- for both
+        // Extract and validate token for protected endpoints
         String token = extractToken(exchange);
         if (token == null || !isValidToken(token)) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
 
-        // Check role-based access- only admins
+        // Check role-based access for admin endpoints
         String role = extractRole(token);
-        if (path.startsWith("/api/auth/admin/") && !"ADMIN".equals(role)) {
+
+        // Warehouse roles are allowed to access specific admin paths for order/warehouse operations
+        boolean isWarehouseRole = role != null && java.util.Set.of(
+            "WAREHOUSE_MANAGER", "RECEIVING", "AUDITOR", "PICKER", "PACKER", "SHIPPING", "VIEWER"
+        ).contains(role);
+
+        // Warehouse-accessible admin paths (order status updates, warehouse ops)
+        boolean isWarehouseAdminPath =
+            path.startsWith("/api/auth/admin/orders/") ||
+            path.startsWith("/api/auth/admin/warehouse/") ||
+            path.startsWith("/api/auth/admin/purchase-orders");
+
+        if (path.startsWith("/api/auth/admin/") && !"ADMIN".equals(role)
+                && !(isWarehouseRole && isWarehouseAdminPath)) {
             exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
             return exchange.getResponse().setComplete();
         }
-        // Allow /api/inventory/** for both USER and ADMIN (for Feign clients)
-        // Check role-based access using validator
+        
+        // Check role-based access using validator for other protected endpoints
         if (!urlValidator.hasValidRole(path, role)) {
             exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
             return exchange.getResponse().setComplete();
-
         }
 
-        // Route to target service
         return chain.filter(exchange);
     }
 
 
     private String extractToken(ServerWebExchange exchange) {
         String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
-        String token = (authHeader != null && authHeader.startsWith("Bearer ")) ?
+        return (authHeader != null && authHeader.startsWith("Bearer ")) ?
                 authHeader.substring(7) : null;
-
-        System.out.println("Extracted token length: " + (token != null ? token.length() : "null"));
-        return token;
     }
 
     private SecretKey getSigningKey() {
@@ -86,34 +118,22 @@ public class JwtValidationFilter implements GlobalFilter, Ordered {
         return -1;
     }
 
-    // Check token expiration in JwtValidationFilter
     private boolean isValidToken(String token) {
         try {
             Claims claims = Jwts.parser().verifyWith(getSigningKey()).build()
                     .parseSignedClaims(token).getPayload();
-
-            // Add expiration check logging
-            Date expiration = claims.getExpiration();
-            System.out.println("Token expires at: " + expiration);
-            System.out.println("Current time: " + new Date());
-
-            return true;
+            return claims.getExpiration().after(new Date());
         } catch (Exception e) {
-            System.out.println("Token validation failed: " + e.getMessage());
             return false;
         }
     }
-
 
     private String extractRole(String token) {
         try {
             Claims claims = Jwts.parser().verifyWith(getSigningKey()).build()
                     .parseSignedClaims(token).getPayload();
-            String role = claims.get("role", String.class);
-            System.out.println("Extracted role: " + role);
-            return role;
+            return claims.get("role", String.class);
         } catch (Exception e) {
-            System.out.println("Role extraction failed: " + e.getMessage());
             return null;
         }
     }

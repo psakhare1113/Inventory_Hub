@@ -30,22 +30,37 @@ public class InventoryReturn {
     @JoinColumn(name = "inspection_id", referencedColumnName = "id")
     private InventoryInspection inspection;
 
+    @Column(nullable = false)
     private String barcode;
+    
+    @Column(nullable = false)
     private String orderNumber;
+    
+    @Column(nullable = false)
     private boolean approved;
+    
     private String rejectionReason;
     private LocalDateTime inspectedAt;
     private String inspectedBy;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ReturnStatus status;
 
     private Long transactionId;
 
     // New fields
     private String returnReason;
-    private Boolean damageDeclared;
+    
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean damageDeclared = false;
+    
     private String damageReason;
+    
+    // Inspection details
+    private String inspectorRemarks;  // Delivery boy's detailed notes
+    private String itemCondition;     // GOOD, FAIR, DAMAGED
 
     @ElementCollection
     @CollectionTable(name = "inventory_return_images", joinColumns = @JoinColumn(name = "return_id"))

@@ -8,7 +8,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "payment-gateway",url = "${api.gateway.url:http://localhost:9999}",
+@FeignClient(name = "payment-service",url = "http://localhost:9096",
         configuration = FeignConfig.class)
 
 public interface PaymentFeignClient {
@@ -17,5 +17,5 @@ public interface PaymentFeignClient {
     PaymentResponse pay(@RequestBody PaymentRequest request);
 
     @PostMapping("/api/payments/refund")
-    public PaymentResponse refund(RefundPaymentRequest refundPaymentRequest);
+    public Object refund(RefundPaymentRequest refundPaymentRequest);
     }

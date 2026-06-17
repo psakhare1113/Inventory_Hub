@@ -29,7 +29,7 @@ Requires authentication for all other endpoints */
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/api/auth/register", "/api/auth/login", "/api/auth/token", "/api/auth/createAdmin").permitAll()
-                        .pathMatchers("/api/products/**", "/api/categories/**", "/api/subcategories/**", "/api/pricing/**").permitAll()
+                        .pathMatchers("/api/products/**", "/api/categories/**", "/api/subcategories/**", "/api/pricing/**", "/api/images/**").permitAll()
                         .anyExchange().permitAll()
                 )
                 .build();

@@ -10,6 +10,12 @@ public class PricingUpdateRequest {
     private BigDecimal price;
     private BigDecimal mrp;
     private BigDecimal sellingPrice;
+    private BigDecimal costPrice;       // supplier purchase price → inventory buyPrice
+    private BigDecimal packagingCost;   // packaging cost per unit
+    private BigDecimal shippingCost;    // shipping/logistics cost per unit
+    private BigDecimal profitMargin;    // profit per unit (₹)
+    private BigDecimal discount;
+    private BigDecimal gstRate;
     private Double unitSize;
     private String unitLabel;
 

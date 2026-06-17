@@ -1,0 +1,258 @@
+/* Enhanced Inventory CSS with loading animations and better error handling */
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.inventory-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.inventory-error-container {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  padding: 20px;
+  color: #721c24;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.inventory-success-container {
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  border-radius: 8px;
+  padding: 30px;
+  color: #0c5460;
+}
+
+.inventory-button {
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin: 0 5px;
+}
+
+.inventory-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.inventory-button-primary {
+  background: #007bff;
+  color: white;
+}
+
+.inventory-button-success {
+  background: #28a745;
+  color: white;
+}
+
+.inventory-button-info {
+  background: #17a2b8;
+  color: white;
+}
+
+.inventory-button-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.inventory-troubleshooting {
+  margin-top: 15px;
+  font-size: 12px;
+  color: #856404;
+  background: #fff3cd;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.inventory-troubleshooting ul {
+  margin: 5px 0;
+  padding-left: 20px;
+  text-align: left;
+}
+
+.inventory-status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+}
+
+.inventory-status-available {
+  background: #28a745;
+}
+
+.inventory-status-enabled {
+  background: #28a745;
+}
+
+.inventory-status-reserved {
+  background: #ffc107;
+  color: #212529;
+}
+
+.inventory-status-sold {
+  background: #6c757d;
+}
+
+.inventory-status-disabled {
+  background: #dc3545;
+}
+
+.inventory-table-enhanced {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.inventory-table-enhanced th,
+.inventory-table-enhanced td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.inventory-table-enhanced th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+.inventory-table-enhanced tr:hover {
+  background-color: #f8f9fa;
+}
+
+.inventory-action-buttons {
+  display: flex;
+  gap: 5px;
+}
+
+.inventory-action-button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.inventory-action-button:hover {
+  transform: translateY(-1px);
+}
+
+.inventory-edit-button {
+  background: #007bff;
+  color: white;
+}
+
+.inventory-view-button {
+  background: #17a2b8;
+  color: white;
+}
+
+.inventory-delete-button {
+  background: #dc3545;
+  color: white;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .inventory-button {
+    padding: 8px 16px;
+    font-size: 14px;
+    margin: 2px;
+  }
+  
+  .inventory-table-enhanced {
+    font-size: 14px;
+  }
+  
+  .inventory-table-enhanced th,
+  .inventory-table-enhanced td {
+    padding: 8px;
+  }
+}
+
+/* Loading overlay */
+.inventory-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.inventory-loading-content {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced error messages */
+.inventory-error-details {
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 11px;
+  text-align: left;
+  overflow-x: auto;
+}
+
+/* Success animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.inventory-success-message {
+  animation: fadeInUp 0.3s ease;
+}
+
+/* Button loading state */
+.inventory-button-loading {
+  position: relative;
+  color: transparent;
+}
+
+.inventory-button-loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}

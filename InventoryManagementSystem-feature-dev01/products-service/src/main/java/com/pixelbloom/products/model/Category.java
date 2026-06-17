@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "categories")
 @Data
@@ -20,4 +22,8 @@ public class Category {
     
     @Column(name = "image_url")
     private String imageUrl;
+
+    // GST rate for this category (Indian GST slabs: 0, 5, 12, 18, 28)
+    @Column(name = "gst_rate", nullable = false)
+    private BigDecimal gstRate = BigDecimal.valueOf(12.00);
 }

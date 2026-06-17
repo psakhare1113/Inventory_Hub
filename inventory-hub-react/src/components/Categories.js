@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { categoriesApi } from '../services/apiService';
+import { useNavigate } from 'react-router-dom';
 
 export const Categories = ({ onFilterByCategory }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadCategories();
@@ -18,6 +20,10 @@ export const Categories = ({ onFilterByCategory }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClick = (cat) => {
+    navigate(`/category/${cat.id}`);
   };
 
   if (loading) {
@@ -39,7 +45,7 @@ export const Categories = ({ onFilterByCategory }) => {
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 md:gap-8">
         {categories.map(cat => (
-          <div key={cat.id} className="flex flex-col items-center group cursor-pointer" onClick={() => onFilterByCategory(cat.id)}>
+          <div key={cat.id} className="flex flex-col items-center group cursor-pointer" onClick={() => handleClick(cat)}>
             <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden mb-4 p-1 border-2 border-transparent group-hover:border-primary transition-all duration-300">
               <div className="w-full h-full rounded-full overflow-hidden bg-secondary">
                 <img 

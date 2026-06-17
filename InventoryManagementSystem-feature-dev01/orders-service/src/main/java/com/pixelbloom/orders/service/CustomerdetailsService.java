@@ -17,6 +17,9 @@ public interface CustomerdetailsService {
     CustomerDetails saveAddress(CustomerDetails address);
     void deleteAddress(Long customerId);
     CustomerDetails CustomerDetailsById(Long customerId);
+    List<CustomerDetails> getAllCustomerDetails();
+    long getCustomerCount();
+    void createTestCustomerData();
     CustomerDetails updateAddress(Long customerId, CustomerAddressRequest request);
 
 

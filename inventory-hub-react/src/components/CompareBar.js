@@ -1,7 +1,7 @@
 import React from 'react';
 import { icons } from '../utils/icons';
 
-export const CompareBar = ({ compareProducts, onRemove, onClear, onNavigate }) => {
+export const CompareBar = ({ compareProducts, onRemove, onClear, onNavigate, onOpenModal }) => {
   if (compareProducts.length === 0) return null;
 
   return (
@@ -28,7 +28,7 @@ export const CompareBar = ({ compareProducts, onRemove, onClear, onNavigate }) =
         <div className="flex gap-3 shrink-0">
           <button onClick={onClear} className="px-4 py-2 border border-border rounded-lg hover:bg-secondary">Clear</button>
           <button 
-            onClick={() => onNavigate('compare')} 
+            onClick={onOpenModal} 
             className={`px-6 py-2 bg-primary text-white rounded-lg font-medium ${compareProducts.length < 2 ? 'opacity-50 cursor-not-allowed' : ''}`}
             disabled={compareProducts.length < 2}
           >

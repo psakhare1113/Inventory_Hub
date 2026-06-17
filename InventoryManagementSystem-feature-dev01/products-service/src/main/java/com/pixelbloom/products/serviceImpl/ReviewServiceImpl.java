@@ -124,20 +124,18 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional
     public Review updateReview(Long reviewId, Integer rating, String comment) {
-
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new RuntimeException("Review not found"));
-
         review.setRating(rating);
         review.setComment(comment);
         review.setUpdatedAt(LocalDateTime.now());
-
         Review saved = reviewRepository.save(review);
-
         updateRatingSummary(saved.getProductId());
-
         return saved;
     }
 
-
+    @Override
+    public List<Review> getProductReviews(Long productId) {
+        return reviewRepository.findByProductIdOrderByCreatedAtDesc(productId);
+    }
 }

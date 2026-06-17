@@ -1,173 +1,406 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import '../css/CustomersModernPro.css';
-import { FaUserPlus, FaEdit, FaTrash, FaUserShield, FaUser, FaPowerOff, FaSearch, FaUsers, FaToggleOn, FaToggleOff } from 'react-icons/fa';
-import { adminService } from '../../services/adminApi';
+import {
+  FaUserPlus, FaEdit, FaTrash, FaUserShield, FaUser,
+  FaSearch, FaUsers, FaToggleOn, FaToggleOff, FaCheck, FaTimes
+} from 'react-icons/fa';
+import { PromoteUserForm } from './PromoteUserForm';
 
+// ── inline toast ──────────────────────────────────────────────────────────────
+function Toast({ toasts }) {
+  return (
+    <div className="cmp-toast-container">
+      {toasts.map(t => (
+        <div key={t.id} className={`cmp-toast cmp-toast-${t.type}`}>
+          {t.type === 'success' ? <FaCheck /> : <FaTimes />}
+          <span>{t.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── confirm modal ─────────────────────────────────────────────────────────────
+function ConfirmModal({ config, onConfirm, onCancel }) {
+  if (!config) return null;
+  return (
+    <div className="cmp-modal-overlay" onClick={onCancel}>
+      <div className="cmp-modal cmp-modal-small" onClick={e => e.stopPropagation()}>
+        <div className="cmp-modal-header">
+          <h3>{config.title}</h3>
+          <button className="cmp-modal-close" onClick={onCancel}>×</button>
+        </div>
+        <div className="cmp-modal-body">
+          <p>{config.message}</p>
+          {config.warning && <p className="cmp-warning-text">{config.warning}</p>}
+        </div>
+        <div className="cmp-modal-footer">
+          <button className="cmp-btn-secondary" onClick={onCancel}>Cancel</button>
+          <button className={config.danger ? 'cmp-btn-danger' : 'cmp-btn-primary'} onClick={onConfirm}>
+            {config.confirmLabel || 'Confirm'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+const getToken = () => localStorage.getItem('token') || localStorage.getItem('authToken');
+const getRole  = () => localStorage.getItem('userRole') || localStorage.getItem('role') || 'ADMIN';
+const authHeaders = () => {
+  const h = { 'Content-Type': 'application/json', 'X-User-Role': getRole() };
+  const t = getToken();
+  if (t) h['Authorization'] = `Bearer ${t}`;
+  return h;
+};
+
+const ENDPOINTS = {
+  customers:  ['http://localhost:9999/api/auth/admin/customers'],
+  create:     ['http://localhost:9999/api/auth/admin/customer'],
+  update: id => [`http://localhost:9999/api/auth/admin/customer/${id}`],
+  delete: id => [`http://localhost:9999/api/auth/admin/customer/${id}`],
+  promote:    id => `http://localhost:9999/api/auth/admin/promote?customerId=${id}`,
+  demote:     id => `http://localhost:9999/api/auth/admin/demote?customerId=${id}`,
+  status:     (id, s) => `http://localhost:9999/api/auth/admin/customer/status?customerId=${id}&status=${s}`,
+};
+
+async function tryEndpoints(urls, options) {
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, options);
+      if (res.ok) return res;
+    } catch { /* try next */ }
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 export default function CustomersModernPro() {
-  const [customers, setCustomers] = useState([]);
+  const [customers, setCustomers]               = useState([]);
+  const [deliveryBoyEmails, setDeliveryBoyEmails] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [editingCustomer, setEditingCustomer] = useState(null);
-  const [deletingCustomer, setDeletingCustomer] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    customerId: '',
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: ''
+  const [loading, setLoading]                   = useState(true);
+  const [actionLoading, setActionLoading]       = useState(null); // customerId being acted on
+  const [searchQuery, setSearchQuery]           = useState('');
+  const [roleFilter, setRoleFilter]             = useState('all');
+  const [statusFilter, setStatusFilter]         = useState('all');
+  const [editingCustomer, setEditingCustomer]   = useState(null);
+  const [isModalOpen, setIsModalOpen]           = useState(false);
+  const [confirmConfig, setConfirmConfig]       = useState(null);
+  const [confirmCallback, setConfirmCallback]   = useState(null);
+  const [showPromoteForm, setShowPromoteForm]   = useState(false);
+  const [toasts, setToasts]                     = useState([]);
+  const [formData, setFormData]                 = useState({
+    customerId: '', firstName: '', lastName: '', email: '',
+    phone: '', address: '', city: '', state: '', pincode: '', isAdmin: false
   });
 
-  useEffect(() => {
-    loadCustomers();
+  // ── toast helper ────────────────────────────────────────────────────────────
+  const showToast = useCallback((message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
   }, []);
 
-  useEffect(() => {
-    filterCustomers();
-  }, [customers, searchQuery, roleFilter, statusFilter]);
+  // ── confirm helper ──────────────────────────────────────────────────────────
+  const confirm = (config) => new Promise(resolve => {
+    setConfirmConfig(config);
+    setConfirmCallback(() => resolve);
+  });
 
-  const loadCustomers = async () => {
-    try {
-      const response = await fetch('http://localhost:2000/api/auth/admin/customers');
-      if (response.ok) {
-        const data = await response.json();
-        setCustomers(data || []);
-      }
-    } catch (err) {
-      console.error('Failed to fetch customers:', err);
-    } finally {
-      setLoading(false);
+  const handleConfirm = () => { confirmCallback(true);  setConfirmConfig(null); setConfirmCallback(null); };
+  const handleCancel  = () => { confirmCallback(false); setConfirmConfig(null); setConfirmCallback(null); };
+
+  // ── load ────────────────────────────────────────────────────────────────────
+  const loadCustomers = useCallback(async () => {
+    setLoading(true);
+    const [res, dbRes] = await Promise.all([
+      tryEndpoints(ENDPOINTS.customers, { headers: authHeaders() }),
+      fetch('http://localhost:9999/api/auth/admin/delivery-boys', { headers: authHeaders() })
+        .catch(() => null),
+    ]);
+    if (res) {
+      const data = await res.json();
+      setCustomers(Array.isArray(data) ? data : []);
+    } else {
+      setCustomers([]);
     }
+    if (dbRes && dbRes.ok) {
+      const dbData = await dbRes.json();
+      setDeliveryBoyEmails(Array.isArray(dbData) ? dbData : []);
+    } else {
+      setDeliveryBoyEmails([]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadCustomers(); }, [loadCustomers]);
+
+  // ── role helper ──────────────────────────────────────────────────────────────
+  const getCustomerRole = (customer) => {
+    if (customer.isAdmin === true) return 'ADMIN';
+    if (customer.isDeliveryBoy === true || deliveryBoyEmails.includes(customer.email)) return 'DELIVERY_BOY';
+    if (customer.isWarehouseStaff === true) return customer.warehouseRole || customer.role || 'WAREHOUSE_STAFF';
+    if (customer.role && customer.role !== 'USER') return customer.role;
+    return 'USER';
   };
 
-  const filterCustomers = () => {
+  const WAREHOUSE_ROLES = ['WAREHOUSE_MANAGER', 'RECEIVING_CLERK', 'PICK_STAFF', 'PACK_STAFF', 'SHIPPING_STAFF', 'AUDIT_STAFF', 'VIEW_STAFF', 'PICKER', 'PACKER', 'SHIPPING'];
+  const isWarehouseRole = (role) => WAREHOUSE_ROLES.includes(role?.toUpperCase());
+
+  // ── filter ──────────────────────────────────────────────────────────────────
+  useEffect(() => {
     let result = [...customers];
-    
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(customer => {
-        const fullName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
-        return fullName.toLowerCase().includes(query) || 
-               customer.email?.toLowerCase().includes(query);
+      const q = searchQuery.toLowerCase();
+      result = result.filter(c => {
+        const name = `${c.firstName || ''} ${c.lastName || ''}`.toLowerCase();
+        return name.includes(q) || c.email?.toLowerCase().includes(q);
       });
     }
-    
-    if (roleFilter !== 'all') {
-      result = result.filter(customer => customer.role === roleFilter);
-    }
-    
-    if (statusFilter !== 'all') {
-      const isActive = statusFilter === 'active';
-      result = result.filter(customer => customer.isActive === isActive);
-    }
-    
+    if (roleFilter === 'ADMIN') result = result.filter(c => c.isAdmin === true);
+    if (roleFilter === 'DELIVERY_BOY') result = result.filter(c => c.isDeliveryBoy === true || deliveryBoyEmails.includes(c.email));
+    if (roleFilter === 'WAREHOUSE_STAFF') result = result.filter(c => {
+      const role = getCustomerRole(c);
+      return c.isWarehouseStaff === true || isWarehouseRole(role);
+    });
+    if (roleFilter === 'USER')  result = result.filter(c => {
+      const role = getCustomerRole(c);
+      return role === 'USER';
+    });
+    if (statusFilter === 'active')   result = result.filter(c => c.status === 'ACTIVE' || !c.status);
+    if (statusFilter === 'inactive') result = result.filter(c => c.status === 'BLOCKED');
     setFilteredCustomers(result);
+  }, [customers, searchQuery, roleFilter, statusFilter, deliveryBoyEmails]);
+
+  // ── stats (always from full list) ───────────────────────────────────────────
+  const stats = {
+    total:  customers.length,
+    admins: customers.filter(c => c.isAdmin === true).length,
+    users:  customers.filter(c => getCustomerRole(c) === 'USER').length,
+    active: customers.filter(c => c.status === 'ACTIVE' || !c.status).length,
   };
 
+  // ── optimistic update helper ────────────────────────────────────────────────
+  const updateCustomerInState = (id, patch) => {
+    setCustomers(prev => prev.map(c => (c.id || c.customerId) === id ? { ...c, ...patch } : c));
+  };
+
+  // ── EDIT ────────────────────────────────────────────────────────────────────
   const handleEdit = (customer) => {
     setEditingCustomer(customer);
     setFormData({
       customerId: customer.id || customer.customerId,
-      name: `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
-      email: customer.email,
-      phone: customer.phoneNumber || customer.phone || '',
-      address: customer.address || '',
-      city: customer.city || '',
-      state: customer.state || '',
-      pincode: customer.pincode || ''
+      firstName:  customer.firstName || '',
+      lastName:   customer.lastName  || '',
+      email:      customer.email     || '',
+      phone:      customer.phoneNumber || customer.phone || '',
+      address:    customer.address   || '',
+      city:       customer.city      || '',
+      state:      customer.state     || '',
+      pincode:    customer.pincode   || '',
+      isAdmin:    customer.isAdmin   || false,
     });
     setIsModalOpen(true);
   };
 
-  const handleDelete = async () => {
-    if (!deletingCustomer) return;
-    try {
-      await adminService.customers.deleteCustomer(deletingCustomer.id || deletingCustomer.customerId);
-      await loadCustomers();
-      setDeletingCustomer(null);
-    } catch (error) {
-      alert('Failed to delete customer: ' + error.message);
-    }
-  };
-
-  const handleRoleChange = async (customerId, currentRole) => {
-    const newRole = currentRole === 'ADMIN' ? 'USER' : 'ADMIN';
-    try {
-      await adminService.customers.updateUserRole(customerId, newRole);
-      loadCustomers();
-    } catch (error) {
-      alert('Failed to update role: ' + error.message);
-    }
-  };
-
-  const handleStatusToggle = async (customerId, currentStatus) => {
-    // Implement status toggle logic here
-    console.log('Toggle status for:', customerId, currentStatus);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const nameParts = formData.name.split(' ');
-      const customerData = {
-        id: parseInt(formData.customerId),
-        firstName: nameParts[0] || '',
-        lastName: nameParts.slice(1).join(' ') || '',
-        email: formData.email,
-        phoneNumber: formData.phone,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        pincode: formData.pincode
-      };
-      
-      if (editingCustomer) {
-        await adminService.customers.updateCustomer(customerData.id, customerData);
-      } else {
-        await adminService.customers.addCustomerDetails(customerData);
-      }
-      
-      await loadCustomers();
-      handleCloseModal();
-    } catch (err) {
-      alert('Failed to save customer: ' + err.message);
-    }
+  const handleOpenAdd = () => {
+    setEditingCustomer(null);
+    setFormData({ customerId: '', firstName: '', lastName: '', email: '', phone: '', address: '', city: '', state: '', pincode: '', isAdmin: false });
+    setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingCustomer(null);
-    setFormData({ customerId: '', name: '', email: '', phone: '', address: '', city: '', state: '', pincode: '' });
   };
 
-  const getInitials = (firstName, lastName) => {
-    const first = firstName?.[0] || '';
-    const last = lastName?.[0] || '';
-    return (first + last).toUpperCase() || 'NA';
-  };
+  // ── SUBMIT (Create / Update) ─────────────────────────────────────────────────
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      id:          editingCustomer ? parseInt(formData.customerId) : undefined,
+      firstName:   formData.firstName,
+      lastName:    formData.lastName,
+      email:       formData.email,
+      phoneNumber: formData.phone,
+      address:     formData.address,
+      city:        formData.city,
+      state:       formData.state,
+      pincode:     formData.pincode,
+      isAdmin:     formData.isAdmin,
+    };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Never';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+    const urls    = editingCustomer ? ENDPOINTS.update(payload.id) : ENDPOINTS.create;
+    const method  = editingCustomer ? 'PUT' : 'POST';
+
+    const res = await tryEndpoints(urls, {
+      method,
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
     });
+
+    if (res) {
+      const saved = await res.json().catch(() => payload);
+      if (editingCustomer) {
+        // optimistic: patch in place
+        updateCustomerInState(payload.id, { ...saved, ...payload });
+        showToast('Customer updated successfully');
+      } else {
+        // add new row
+        setCustomers(prev => [...prev, saved]);
+        showToast('Customer added successfully');
+      }
+      handleCloseModal();
+    } else {
+      showToast('Failed to save customer. Check server connection.', 'error');
+    }
   };
 
-  const stats = {
-    total: customers.length,
-    admins: customers.filter(c => c.role === 'ADMIN').length,
-    users: customers.filter(c => c.role === 'USER' || !c.role).length,
-    active: customers.filter(c => c.isActive !== false).length
+  // ── DELETE ───────────────────────────────────────────────────────────────────
+  const handleDeleteClick = async (customer) => {
+    const fullName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
+    const ok = await confirm({
+      title: 'Delete Customer',
+      message: `Are you sure you want to delete ${fullName}?`,
+      warning: 'This action cannot be undone.',
+      confirmLabel: 'Delete Customer',
+      danger: true,
+    });
+    if (!ok) return;
+
+    const id = customer.id || customer.customerId;
+    setActionLoading(id);
+    const res = await tryEndpoints(ENDPOINTS.delete(id), { method: 'DELETE', headers: authHeaders() });
+    setActionLoading(null);
+
+    if (res) {
+      // optimistic: remove from state
+      setCustomers(prev => prev.filter(c => (c.id || c.customerId) !== id));
+      showToast(`${fullName} deleted successfully`);
+    } else {
+      showToast('Failed to delete customer. Check server connection.', 'error');
+    }
   };
 
+  // ── ROLE CHANGE ──────────────────────────────────────────────────────────────
+  const handleRoleChange = async (customer) => {
+    const id       = customer.id || customer.customerId;
+    const fullName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
+    const isAdmin  = customer.isAdmin;
+
+    const ok = await confirm({
+      title:        isAdmin ? 'Remove Admin Role' : 'Promote to Admin',
+      message:      isAdmin
+        ? `Remove Admin privileges from ${fullName}? They will become a regular Customer.`
+        : `Promote ${fullName} to Admin? They will have full admin access.`,
+      confirmLabel: isAdmin ? 'Demote to Customer' : 'Make Admin',
+      danger:       isAdmin,
+    });
+    if (!ok) return;
+
+    setActionLoading(id);
+    try {
+      const url    = isAdmin ? ENDPOINTS.demote(id) : ENDPOINTS.promote(id);
+      const method = isAdmin ? 'DELETE' : 'POST';
+      const res    = await fetch(url, { method, headers: authHeaders() });
+
+      if (res.ok) {
+        const newIsAdmin = !isAdmin;
+        // optimistic update — reflects immediately in table + stats
+        updateCustomerInState(id, { isAdmin: newIsAdmin });
+
+        // if the promoted/demoted user is the currently logged-in user, update session
+        const currentUserId = localStorage.getItem('customerId') || localStorage.getItem('userId');
+        if (String(id) === String(currentUserId)) {
+          const newRole = newIsAdmin ? 'ADMIN' : 'USER';
+          localStorage.setItem('isAdmin', String(newIsAdmin));
+          localStorage.setItem('userRole', newRole);
+          localStorage.setItem('role', newIsAdmin ? 'ADMIN' : 'CUSTOMER');
+          if (newIsAdmin) {
+            localStorage.setItem('isNewAdmin', 'true');
+            localStorage.setItem('currentView', 'admin');
+          } else {
+            // Clear admin-specific session keys so stale JWT doesn't re-grant admin access
+            localStorage.removeItem('isNewAdmin');
+            localStorage.removeItem('hasLoggedInAsAdmin');
+            localStorage.setItem('currentView', 'user');
+            // Force token refresh: clear tokens so user must re-login with fresh USER token
+            localStorage.removeItem('token');
+            localStorage.removeItem('authToken');
+          }
+          window.dispatchEvent(new CustomEvent('roleChanged', { detail: { newRole } }));
+        } else if (isAdmin && !newIsAdmin) {
+          // Demoting another user — store their ID so their stale token is rejected on next load
+          const demotedUsers = JSON.parse(localStorage.getItem('demotedUsers') || '[]');
+          if (!demotedUsers.includes(String(id))) {
+            demotedUsers.push(String(id));
+            localStorage.setItem('demotedUsers', JSON.stringify(demotedUsers));
+          }
+        }
+
+        showToast(
+          newIsAdmin
+            ? `${fullName} is now an Admin`
+            : `${fullName} is now a regular Customer`
+        );
+        // Re-fetch from DB so both screens reflect the persisted change
+        loadCustomers();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.message || `Failed to ${isAdmin ? 'demote' : 'promote'} user`, 'error');
+      }
+    } catch {
+      showToast('Network error. Check server connection.', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ── STATUS TOGGLE ────────────────────────────────────────────────────────────
+  const handleStatusToggle = async (customer) => {
+    const id        = customer.id || customer.customerId;
+    const fullName  = `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
+    const curStatus = customer.status || 'ACTIVE';
+    const newStatus = curStatus === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
+    const action    = newStatus === 'BLOCKED' ? 'Block' : 'Unblock';
+
+    const ok = await confirm({
+      title:        `${action} Customer`,
+      message:      `${action} ${fullName}?`,
+      confirmLabel: action,
+      danger:       newStatus === 'BLOCKED',
+    });
+    if (!ok) return;
+
+    setActionLoading(id);
+    try {
+      const res = await fetch(ENDPOINTS.status(id, newStatus), {
+        method: 'PUT',
+        headers: authHeaders(),
+      });
+
+      if (res.ok) {
+        // optimistic update
+        updateCustomerInState(id, { status: newStatus });
+        showToast(`${fullName} has been ${action.toLowerCase()}ed`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.message || `Failed to ${action.toLowerCase()} customer`, 'error');
+      }
+    } catch {
+      showToast('Network error. Check server connection.', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ── helpers ──────────────────────────────────────────────────────────────────
+  const getInitials = (first, last) => ((first?.[0] || '') + (last?.[0] || '')).toUpperCase() || 'NA';
+  const formatDate  = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Never';
+
+  // ── render ───────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="cmp-loading">
@@ -178,63 +411,51 @@ export default function CustomersModernPro() {
 
   return (
     <div className="cmp-container">
+      <Toast toasts={toasts} />
+
       <main className="cmp-main">
         <div className="cmp-content">
+
           {/* Header */}
           <div className="cmp-header">
             <div>
               <h1 className="cmp-title">Customer Management</h1>
               <p className="cmp-subtitle">Manage users, roles, and permissions</p>
             </div>
-            <button className="cmp-btn-primary" onClick={() => setIsModalOpen(true)}>
-              <FaUserPlus className="cmp-icon" />
-              Add Customer
-            </button>
+            <div className="flex gap-3">
+              <button className="cmp-btn-secondary" onClick={loadCustomers} style={{ backgroundColor: '#6b7280', color: 'white' }}>
+                🔄 Refresh
+              </button>
+              <button className="cmp-btn-secondary" onClick={() => setShowPromoteForm(true)} style={{ backgroundColor: '#10b981', color: 'white' }}>
+                <FaUserShield className="cmp-icon" /> Promote with Credentials
+              </button>
+              <button className="cmp-btn-primary" onClick={handleOpenAdd}>
+                <FaUserPlus className="cmp-icon" /> Add Customer
+              </button>
+            </div>
           </div>
 
-          {/* Stats Cards */}
+          {/* Stats */}
           <div className="cmp-stats-grid">
-            <div className="cmp-stat-card">
-              <div className="cmp-stat-content">
-                <div>
-                  <p className="cmp-stat-label">Total Users</p>
-                  <p className="cmp-stat-value cmp-stat-primary">{stats.total}</p>
-                </div>
-                <div className="cmp-stat-icon cmp-stat-icon-primary">
-                  <FaUsers />
+            {[
+              { label: 'Total Users',     value: stats.total,  cls: 'cmp-stat-primary',  icon: <FaUsers /> },
+              { label: 'Administrators',  value: stats.admins, cls: 'cmp-stat-violet',   icon: <FaUserShield /> },
+              { label: 'Customers',       value: stats.users,  cls: 'cmp-stat-emerald',  icon: <FaUser /> },
+              { label: 'Active Users',    value: stats.active, cls: 'cmp-stat-amber',    icon: <FaToggleOn /> },
+            ].map(s => (
+              <div key={s.label} className="cmp-stat-card">
+                <div className="cmp-stat-content">
+                  <div>
+                    <p className="cmp-stat-label">{s.label}</p>
+                    <p className={`cmp-stat-value ${s.cls}`}>{s.value}</p>
+                  </div>
+                  <div className={`cmp-stat-icon cmp-stat-icon-${s.cls.replace('cmp-stat-', '')}`}>{s.icon}</div>
                 </div>
               </div>
-            </div>
-            <div className="cmp-stat-card">
-              <div className="cmp-stat-content">
-                <div>
-                  <p className="cmp-stat-label">Administrators</p>
-                  <p className="cmp-stat-value cmp-stat-violet">{stats.admins}</p>
-                </div>
-                <div className="cmp-stat-icon cmp-stat-icon-violet"></div>
-              </div>
-            </div>
-            <div className="cmp-stat-card">
-              <div className="cmp-stat-content">
-                <div>
-                  <p className="cmp-stat-label">Customers</p>
-                  <p className="cmp-stat-value cmp-stat-emerald">{stats.users}</p>
-                </div>
-                <div className="cmp-stat-icon cmp-stat-icon-emerald"></div>
-              </div>
-            </div>
-            <div className="cmp-stat-card">
-              <div className="cmp-stat-content">
-                <div>
-                  <p className="cmp-stat-label">Active Users</p>
-                  <p className="cmp-stat-value cmp-stat-amber">{stats.active}</p>
-                </div>
-                <div className="cmp-stat-icon cmp-stat-icon-amber"></div>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Search and Filters */}
+          {/* Search & Filters */}
           <div className="cmp-search-card">
             <div className="cmp-search-wrapper">
               <FaSearch className="cmp-search-icon" />
@@ -242,25 +463,19 @@ export default function CustomersModernPro() {
                 type="text"
                 placeholder="Search by name or email..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={e => setSearchQuery(e.target.value)}
                 className="cmp-search-input"
               />
             </div>
             <div className="cmp-filters">
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="cmp-select"
-              >
+              <select value={roleFilter}   onChange={e => setRoleFilter(e.target.value)}   className="cmp-select">
                 <option value="all">All Roles</option>
                 <option value="ADMIN">Admin</option>
+                <option value="DELIVERY_BOY">Delivery Boy</option>
+                <option value="WAREHOUSE_STAFF">Warehouse Staff</option>
                 <option value="USER">Customer</option>
               </select>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="cmp-select"
-              >
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="cmp-select">
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -268,84 +483,141 @@ export default function CustomersModernPro() {
             </div>
           </div>
 
-          {/* Users Table */}
+          {/* Table */}
           <div className="cmp-table-card">
             {filteredCustomers.length === 0 ? (
               <div className="cmp-empty">
-                <p>No customers found</p>
+                {customers.length === 0
+                  ? <div>
+                      <p><strong>No customers found in database</strong></p>
+                      <p style={{ marginTop: 8, color: '#6b7280' }}>Make sure the auth server is running and customers are registered.</p>
+                    </div>
+                  : <p>No customers match your search criteria</p>
+                }
               </div>
             ) : (
               <table className="cmp-table">
                 <thead>
                   <tr className="cmp-table-header">
+                    <th>ID</th>
                     <th>User</th>
                     <th>Contact</th>
                     <th>Role</th>
                     <th>Status</th>
-                    <th>Last Login</th>
+                    <th>Last Updated</th>
                     <th>Joined</th>
                     <th className="cmp-text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCustomers.map((customer) => {
-                    const fullName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'N/A';
+                  {filteredCustomers.map(customer => {
+                    const id         = customer.id || customer.customerId;
+                    const fullName   = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'N/A';
+                    const busy       = actionLoading === id;
+                    const custRole   = getCustomerRole(customer);
+                    const isWH       = customer.isWarehouseStaff === true || isWarehouseRole(custRole);
+                    const isDB       = custRole === 'DELIVERY_BOY';
+                    const isAdm      = custRole === 'ADMIN';
+
+                    // Human-readable warehouse role labels
+                    const WH_LABELS = {
+                      WAREHOUSE_MANAGER: 'WH Manager',
+                      RECEIVING_CLERK:   'Receiving',
+                      PICK_STAFF:        'Picker',
+                      PACK_STAFF:        'Packer',
+                      SHIPPING_STAFF:    'Shipping',
+                      AUDIT_STAFF:       'Auditor',
+                      VIEW_STAFF:        'Viewer',
+                      PICKER:            'Picker',
+                      PACKER:            'Packer',
+                      SHIPPING:          'Shipping',
+                    };
+                    const roleLabel = isAdm ? 'Admin'
+                      : isDB  ? 'Delivery Boy'
+                      : isWH  ? (WH_LABELS[custRole?.toUpperCase()] || custRole)
+                      : 'Customer';
+
+                    const avatarClass = isAdm ? 'cmp-avatar-admin'
+                      : isDB  ? 'cmp-avatar-delivery'
+                      : isWH  ? 'cmp-avatar-warehouse'
+                      : '';
+
+                    const badgeClass = isAdm ? 'cmp-badge-admin'
+                      : isDB  ? 'cmp-badge-delivery'
+                      : isWH  ? 'cmp-badge-warehouse'
+                      : 'cmp-badge-user';
+
+                    const badgeIcon = isAdm ? <FaUserShield className="cmp-badge-icon" />
+                      : isDB  ? <span className="cmp-badge-icon">🚚</span>
+                      : isWH  ? <span className="cmp-badge-icon">🏭</span>
+                      : <FaUser className="cmp-badge-icon" />;
+
                     return (
-                      <tr key={customer.id || customer.customerId} className="cmp-table-row">
+                      <tr key={id} className={`cmp-table-row${busy ? ' cmp-row-busy' : ''}`}>
+                        <td><span className="cmp-customer-id">{id}</span></td>
                         <td>
                           <div className="cmp-user-cell">
-                            <div className="cmp-avatar">
+                            <div className={`cmp-avatar ${avatarClass}`}>
                               {getInitials(customer.firstName, customer.lastName)}
                             </div>
-                            <span className="cmp-user-name">{fullName}</span>
+                            <div className="cmp-user-details">
+                              <span className="cmp-user-name">{fullName}</span>
+                              <span className="cmp-user-email">{customer.email}</span>
+                            </div>
                           </div>
                         </td>
                         <td>
-                          <div>
-                            <p className="cmp-contact-email">{customer.email}</p>
-                            <p className="cmp-contact-phone">{customer.phoneNumber || customer.phone || 'N/A'}</p>
-                          </div>
+                          <p className="cmp-contact-email">{customer.email}</p>
+                          <p className="cmp-contact-phone">{customer.phoneNumber || customer.phone || 'N/A'}</p>
                         </td>
                         <td>
-                          <span className={`cmp-badge ${customer.role === 'ADMIN' ? 'cmp-badge-admin' : 'cmp-badge-user'}`}>
-                            {customer.role === 'ADMIN' ? <FaUserShield className="cmp-badge-icon" /> : <FaUser className="cmp-badge-icon" />}
-                            {customer.role === 'ADMIN' ? 'Admin' : 'Customer'}
+                          <span className={`cmp-badge ${badgeClass}`}>
+                            {badgeIcon}
+                            {roleLabel}
                           </span>
                         </td>
                         <td>
-                          <span className={`cmp-badge ${customer.isActive !== false ? 'cmp-badge-active' : 'cmp-badge-inactive'}`}>
-                            {customer.isActive !== false ? 'Active' : 'Inactive'}
+                          <span className={`cmp-badge ${customer.status === 'BLOCKED' ? 'cmp-badge-inactive' : 'cmp-badge-active'}`}>
+                            {customer.status === 'BLOCKED' ? 'Blocked' : 'Active'}
                           </span>
                         </td>
-                        <td className="cmp-date-cell">{formatDate(customer.lastLoginAt)}</td>
+                        <td className="cmp-date-cell">{formatDate(customer.updatedAt)}</td>
                         <td className="cmp-date-cell">{formatDate(customer.createdAt)}</td>
                         <td>
                           <div className="cmp-actions">
+                            {/* Edit */}
                             <button
                               className="cmp-action-btn cmp-action-edit"
                               onClick={() => handleEdit(customer)}
                               title="Edit Details"
+                              disabled={busy}
                             >
                               <FaEdit />
                             </button>
+                            {/* Role toggle */}
                             <button
-                              className={`cmp-action-btn ${customer.role === 'ADMIN' ? 'cmp-action-admin' : 'cmp-action-role'}`}
-                              onClick={() => handleRoleChange(customer.id || customer.customerId, customer.role || 'USER')}
-                              title={customer.role === 'ADMIN' ? 'Make Customer' : 'Make Admin'}
+                              className={`cmp-action-btn ${customer.isAdmin ? 'cmp-action-admin' : 'cmp-action-role'}`}
+                              onClick={() => handleRoleChange(customer)}
+                              title={customer.isAdmin ? 'Demote to Customer' : 'Promote to Admin'}
+                              disabled={busy}
                             >
                               <FaUserShield />
                             </button>
+                            {/* Status toggle */}
                             <button
                               className="cmp-action-btn cmp-action-status"
-                              onClick={() => handleStatusToggle(customer.id || customer.customerId, customer.isActive)}
-                              title={customer.isActive !== false ? 'Deactivate' : 'Activate'}
+                              onClick={() => handleStatusToggle(customer)}
+                              title={customer.status === 'BLOCKED' ? 'Unblock' : 'Block'}
+                              disabled={busy}
                             >
-                              {customer.isActive !== false ? <FaToggleOn /> : <FaToggleOff />}
+                              {customer.status === 'BLOCKED' ? <FaToggleOff /> : <FaToggleOn />}
                             </button>
+                            {/* Delete */}
                             <button
                               className="cmp-action-btn cmp-action-delete"
-                              onClick={() => setDeletingCustomer(customer)}
+                              onClick={() => handleDeleteClick(customer)}
                               title="Delete User"
+                              disabled={busy}
                             >
                               <FaTrash />
                             </button>
@@ -361,42 +633,54 @@ export default function CustomersModernPro() {
         </div>
       </main>
 
-      {/* Edit Modal */}
+      {/* Add / Edit Modal */}
       {isModalOpen && (
         <div className="cmp-modal-overlay" onClick={handleCloseModal}>
-          <div className="cmp-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="cmp-modal" onClick={e => e.stopPropagation()}>
             <div className="cmp-modal-header">
               <h3>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</h3>
               <button className="cmp-modal-close" onClick={handleCloseModal}>×</button>
             </div>
             <form onSubmit={handleSubmit} className="cmp-modal-form">
-              <div className="cmp-form-group">
-                <label>Customer ID</label>
-                <input
-                  type="number"
-                  value={formData.customerId}
-                  onChange={(e) => setFormData({...formData, customerId: e.target.value})}
-                  required
-                  disabled={editingCustomer}
-                  placeholder="Enter customer ID"
-                />
-              </div>
-              <div className="cmp-form-group">
-                <label>Full Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  required
-                  placeholder="Enter full name"
-                />
+              {!editingCustomer && (
+                <div className="cmp-form-group">
+                  <label>Customer ID</label>
+                  <input
+                    type="number"
+                    value={formData.customerId}
+                    onChange={e => setFormData({ ...formData, customerId: e.target.value })}
+                    required
+                    placeholder="Enter customer ID"
+                  />
+                </div>
+              )}
+              <div className="cmp-form-row">
+                <div className="cmp-form-group">
+                  <label>First Name</label>
+                  <input
+                    type="text"
+                    value={formData.firstName}
+                    onChange={e => setFormData({ ...formData, firstName: e.target.value })}
+                    required
+                    placeholder="First name"
+                  />
+                </div>
+                <div className="cmp-form-group">
+                  <label>Last Name</label>
+                  <input
+                    type="text"
+                    value={formData.lastName}
+                    onChange={e => setFormData({ ...formData, lastName: e.target.value })}
+                    placeholder="Last name"
+                  />
+                </div>
               </div>
               <div className="cmp-form-group">
                 <label>Email</label>
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
                   required
                   placeholder="Enter email address"
                 />
@@ -406,7 +690,7 @@ export default function CustomersModernPro() {
                 <input
                   type="text"
                   value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="Enter phone number"
                 />
               </div>
@@ -415,43 +699,39 @@ export default function CustomersModernPro() {
                 <input
                   type="text"
                   value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  onChange={e => setFormData({ ...formData, address: e.target.value })}
                   placeholder="Enter address"
                 />
               </div>
               <div className="cmp-form-row">
                 <div className="cmp-form-group">
                   <label>City</label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) => setFormData({...formData, city: e.target.value})}
-                    placeholder="Enter city"
-                  />
+                  <input type="text" value={formData.city}    onChange={e => setFormData({ ...formData, city: e.target.value })}    placeholder="City" />
                 </div>
                 <div className="cmp-form-group">
                   <label>State</label>
-                  <input
-                    type="text"
-                    value={formData.state}
-                    onChange={(e) => setFormData({...formData, state: e.target.value})}
-                    placeholder="Enter state"
-                  />
+                  <input type="text" value={formData.state}   onChange={e => setFormData({ ...formData, state: e.target.value })}   placeholder="State" />
                 </div>
                 <div className="cmp-form-group">
                   <label>Pincode</label>
-                  <input
-                    type="text"
-                    value={formData.pincode}
-                    onChange={(e) => setFormData({...formData, pincode: e.target.value})}
-                    placeholder="Enter pincode"
-                  />
+                  <input type="text" value={formData.pincode} onChange={e => setFormData({ ...formData, pincode: e.target.value })} placeholder="Pincode" />
                 </div>
               </div>
+              {/* Role selector in form */}
+              <div className="cmp-form-group">
+                <label>Role</label>
+                <select
+                  value={formData.isAdmin ? 'ADMIN' : 'USER'}
+                  onChange={e => setFormData({ ...formData, isAdmin: e.target.value === 'ADMIN' })}
+                  className="cmp-select"
+                  style={{ width: '100%' }}
+                >
+                  <option value="USER">Customer</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
               <div className="cmp-modal-footer">
-                <button type="button" className="cmp-btn-secondary" onClick={handleCloseModal}>
-                  Cancel
-                </button>
+                <button type="button" className="cmp-btn-secondary" onClick={handleCloseModal}>Cancel</button>
                 <button type="submit" className="cmp-btn-primary">
                   {editingCustomer ? 'Update Customer' : 'Add Customer'}
                 </button>
@@ -461,28 +741,15 @@ export default function CustomersModernPro() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {deletingCustomer && (
-        <div className="cmp-modal-overlay" onClick={() => setDeletingCustomer(null)}>
-          <div className="cmp-modal cmp-modal-small" onClick={(e) => e.stopPropagation()}>
-            <div className="cmp-modal-header">
-              <h3>Delete Customer</h3>
-              <button className="cmp-modal-close" onClick={() => setDeletingCustomer(null)}>×</button>
-            </div>
-            <div className="cmp-modal-body">
-              <p>Are you sure you want to delete <strong>{deletingCustomer.firstName} {deletingCustomer.lastName}</strong>?</p>
-              <p className="cmp-warning-text">This action cannot be undone.</p>
-            </div>
-            <div className="cmp-modal-footer">
-              <button className="cmp-btn-secondary" onClick={() => setDeletingCustomer(null)}>
-                Cancel
-              </button>
-              <button className="cmp-btn-danger" onClick={handleDelete}>
-                Delete Customer
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Confirm Modal */}
+      <ConfirmModal config={confirmConfig} onConfirm={handleConfirm} onCancel={handleCancel} />
+
+      {/* Promote with Credentials */}
+      {showPromoteForm && (
+        <PromoteUserForm
+          onClose={() => setShowPromoteForm(false)}
+          onSuccess={() => { loadCustomers(); showToast('User promoted successfully'); }}
+        />
       )}
     </div>
   );

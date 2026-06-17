@@ -5,15 +5,17 @@ import com.pixelbloom.orders.model.CustomerProfileResponse;
 import com.pixelbloom.orders.model.Order;
 import com.pixelbloom.orders.model.OrderItem;
 import com.pixelbloom.orders.repository.CustomerDetailsRepository;
+import com.pixelbloom.orders.repository.DeliveryAssignmentRepository;
 import com.pixelbloom.orders.repository.OrderItemRepository;
 import com.pixelbloom.orders.repository.OrderRepository;
 import com.pixelbloom.orders.requestEntity.CustomerAddressRequest;
-
 import com.pixelbloom.orders.responseEntity.OrderItemResponse;
 import com.pixelbloom.orders.responseEntity.OrderResponse;
 import com.pixelbloom.orders.restClients.ProductsClient;
 import com.pixelbloom.orders.service.CustomerdetailsService;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -21,17 +23,46 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CustomerdetailsServiceImpl implements CustomerdetailsService {
 
     private final CustomerDetailsRepository customerDetailsRepository;
     private final OrderRepository orderRepository;
     private final ProductsClient productsClient;
     private final OrderItemRepository orderItemRepository;
+    private final DeliveryAssignmentRepository deliveryAssignmentRepository;
 
 
     @Override
     public CustomerDetails saveAddress(CustomerDetails address) {
-        return customerDetailsRepository.save(address);
+        // Upsert by customerId (PK)
+        if (address.getCustomerId() != null) {
+            CustomerDetails existing = customerDetailsRepository.findById(address.getCustomerId()).orElse(null);
+            if (existing != null) {
+                // Update existing record
+                existing.setFirstName(address.getFirstName());
+                existing.setLastName(address.getLastName());
+                existing.setEmail(address.getEmail());
+                existing.setPhone(address.getPhone());
+                existing.setGender(address.getGender());
+                existing.setTitle(address.getTitle());
+                existing.setStatus(address.getStatus());
+                existing.setAddressLine1(address.getAddressLine1());
+                existing.setAddressLine2(address.getAddressLine2());
+                existing.setCity(address.getCity());
+                existing.setState(address.getState());
+                existing.setPincode(address.getPincode());
+                existing.setCountry(address.getCountry());
+                existing.setIsDefault(address.getIsDefault());
+                existing.setUpdatedAt(java.time.LocalDateTime.now());
+                return customerDetailsRepository.save(existing);
+            }
+            // No existing record — insert new with given customerId as PK
+            if (address.getCreatedAt() == null) address.setCreatedAt(java.time.LocalDateTime.now());
+            if (address.getUpdatedAt() == null) address.setUpdatedAt(java.time.LocalDateTime.now());
+            return customerDetailsRepository.save(address);
+        }
+        throw new RuntimeException("customerId is required to save customer details");
     }
 
     @Override
@@ -45,9 +76,72 @@ public class CustomerdetailsServiceImpl implements CustomerdetailsService {
     }
 
     @Override
+    public List<CustomerDetails> getAllCustomerDetails() {
+        return customerDetailsRepository.findAll();
+    }
+
+    @Override
+    public long getCustomerCount() {
+        return customerDetailsRepository.count();
+    }
+
+    @Override
+    public void createTestCustomerData() {
+        // Only create if no customers exist
+        if (customerDetailsRepository.count() == 0) {
+            CustomerDetails customer1 = CustomerDetails.builder()
+                    .firstName("John")
+                    .lastName("Doe")
+                    .email("john.doe@example.com")
+                    .gender("male")
+                    .title("Mr")
+                    .status(com.pixelbloom.orders.enums.CustomerStatus.ACTIVE)
+                    .addressLine1("123 Main Street")
+                    .city("New York")
+                    .state("NY")
+                    .pincode("10001")
+                    .country("USA")
+                    .phone("+1234567890")
+                    .isDefault(true)
+                    .createdAt(java.time.LocalDateTime.now())
+                    .updatedAt(java.time.LocalDateTime.now())
+                    .build();
+
+            CustomerDetails customer2 = CustomerDetails.builder()
+                    .firstName("Jane")
+                    .lastName("Smith")
+                    .email("jane.smith@example.com")
+                    .gender("female")
+                    .title("Ms")
+                    .status(com.pixelbloom.orders.enums.CustomerStatus.ACTIVE)
+                    .addressLine1("456 Oak Avenue")
+                    .city("Los Angeles")
+                    .state("CA")
+                    .pincode("90001")
+                    .country("USA")
+                    .phone("+1234567891")
+                    .isDefault(true)
+                    .createdAt(java.time.LocalDateTime.now())
+                    .updatedAt(java.time.LocalDateTime.now())
+                    .build();
+
+            customerDetailsRepository.save(customer1);
+            customerDetailsRepository.save(customer2);
+        }
+    }
+
+    @Override
     public CustomerDetails updateAddress(Long customerId, CustomerAddressRequest request) {
-        CustomerDetails customer = customerDetailsRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        CustomerDetails customer = customerDetailsRepository.findById(customerId).orElse(null);
+
+        if (customer == null) {
+            customer = CustomerDetails.builder()
+                    .customerId(customerId)
+                    .status(com.pixelbloom.orders.enums.CustomerStatus.ACTIVE)
+                    .isDefault(false)
+                    .createdAt(java.time.LocalDateTime.now())
+                    .build();
+        }
 
         customer.setAddressLine1(request.getAddressLine1());
         customer.setAddressLine2(request.getAddressLine2());
@@ -55,6 +149,8 @@ public class CustomerdetailsServiceImpl implements CustomerdetailsService {
         customer.setState(request.getState());
         customer.setPincode(request.getPincode());
         customer.setCountry(request.getCountry());
+        if (request.getPhone() != null) customer.setPhone(request.getPhone());
+        customer.setUpdatedAt(java.time.LocalDateTime.now());
 
         return customerDetailsRepository.save(customer);
     }
@@ -117,7 +213,15 @@ public class CustomerdetailsServiceImpl implements CustomerdetailsService {
                 : orderRepository.findByCustomerId(customerId);
 
         return orders.stream()
-                .map(this::convertToOrderResponse)
+                .filter(o -> o != null && o.getOrderNumber() != null)
+                .map(order -> {
+                    try {
+                        return convertToOrderResponse(order);
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .filter(r -> r != null)
                 .toList();
     }
 
@@ -130,7 +234,16 @@ public class CustomerdetailsServiceImpl implements CustomerdetailsService {
                 ? orderRepository.findByOrderStatus(status)
                 : orderRepository.findAll();
         return orders.stream()
-                .map(this::convertToOrderResponse)
+                .filter(o -> o != null && o.getOrderNumber() != null)
+                .map(order -> {
+                    try {
+                        return convertToOrderResponse(order);
+                    } catch (Exception e) {
+                        // Skip bad records, never crash the whole list
+                        return null;
+                    }
+                })
+                .filter(r -> r != null)
                 .toList();
     }
 
@@ -141,28 +254,79 @@ public class CustomerdetailsServiceImpl implements CustomerdetailsService {
                 endDate.atTime(23, 59, 59)
         );
         return orders.stream()
-                .map(this::convertToOrderResponse)
+                .filter(o -> o != null && o.getOrderNumber() != null)
+                .map(order -> {
+                    try {
+                        return convertToOrderResponse(order);
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .filter(r -> r != null)
                 .toList();
     }
 
     private OrderResponse convertToOrderResponse(Order order) {
-        List<OrderItem> items = orderItemRepository.findByOrderNumber(order.getOrderNumber());
-        List<OrderItemResponse> itemResponses = mapToOrderItemResponsesWithReviews(items, order.getCustomerId());
-        return OrderResponse.builder()
-                .orderNumber(order.getOrderNumber()).totalAmount(order.getTotalAmount())
-                .orderStatus(order.getOrderStatus().name()).createdAt(order.getCreatedAt())
-                .deliveredAt(order.getDeliveredAt()).items(itemResponses)
-                .reviewSummary(buildReviewSummary(itemResponses)).build();
+        try {
+            List<OrderItem> items = orderItemRepository.findByOrderNumber(order.getOrderNumber());
+            List<OrderItemResponse> itemResponses = mapToOrderItemResponsesWithReviews(items, order.getCustomerId());
+
+            // Enrich with delivery boy name from the latest delivery assignment
+            String deliveryBoyName = null;
+            Long deliveryBoyId = null;
+            try {
+                var assignmentOpt = deliveryAssignmentRepository
+                    .findTopByOrderNumberOrderByAssignedAtDesc(order.getOrderNumber());
+                if (assignmentOpt.isPresent()) {
+                    var assignment = assignmentOpt.get();
+                    // Only show delivery boy for regular delivery tasks (not return pickup / cash refund)
+                    if (!Boolean.TRUE.equals(assignment.getIsReturnPickupTask())
+                            && !Boolean.TRUE.equals(assignment.getIsCashRefundTask())) {
+                        deliveryBoyName = assignment.getDeliveryBoyName();
+                        deliveryBoyId   = assignment.getDeliveryBoyId();
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Could not fetch delivery assignment for order {}: {}", order.getOrderNumber(), e.getMessage());
+            }
+
+            return OrderResponse.builder()
+                    .orderNumber(order.getOrderNumber())
+                    .customerId(order.getCustomerId())
+                    .totalAmount(order.getTotalAmount())
+                    .orderStatus(order.getOrderStatus() != null ? order.getOrderStatus().name() : "UNKNOWN")
+                    .paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null)
+                    .paymentMode(order.getPaymentMode())
+                    .createdAt(order.getCreatedAt())
+                    .deliveredAt(order.getDeliveredAt())
+                    .warehouseId(order.getWarehouseId())
+                    .warehouseName(order.getWarehouseName())
+                    .packingSlipNumber(order.getPackingSlipNumber())
+                    .awbNumber(order.getAwbNumber())
+                    .courierPartner(order.getCourierPartner())
+                    .deliveryBoyName(deliveryBoyName)
+                    .deliveryBoyId(deliveryBoyId)
+                    .items(itemResponses)
+                    .reviewSummary(buildReviewSummary(itemResponses))
+                    .build();
+        } catch (Exception e) {
+            // Never let a single bad order crash the entire list
+            return OrderResponse.builder()
+                    .orderNumber(order.getOrderNumber() != null ? order.getOrderNumber() : "UNKNOWN")
+                    .customerId(order.getCustomerId())
+                    .totalAmount(order.getTotalAmount())
+                    .orderStatus(order.getOrderStatus() != null ? order.getOrderStatus().name() : "UNKNOWN")
+                    .createdAt(order.getCreatedAt())
+                    .items(List.of())
+                    .build();
+        }
     }
 
 
     public List<OrderItemResponse> mapToOrderItemResponsesWithReviews(List<OrderItem> items, Long customerId) {
         return items.stream()
                 .map(item -> {
-                    // Check if customer can review (order must be delivered)
                     boolean canReview = item.getOrderStatus() == OrderStatus.DELIVERED;
-
-                    // Check if customer has already reviewed this product
                     boolean hasReviewed = false;
                     String reviewId = null;
 
@@ -171,22 +335,55 @@ public class CustomerdetailsServiceImpl implements CustomerdetailsService {
                             Object existingReview = productsClient.getProductReviewByCustomer(item.getProductId(), customerId);
                             hasReviewed = existingReview != null;
                             if (hasReviewed) {
-                                // Extract review ID from response if needed
                                 reviewId = "review_" + item.getProductId() + "_" + customerId;
                             }
                         } catch (Exception e) {
-                            // Review not found or service error
                             hasReviewed = false;
                         }
                     }
 
-                    return OrderItemResponse.builder().productId(item.getProductId())
-                            .barcode(item.getBarcode()).quantity(item.getQuantity())
-                            .unitPrice(item.getUnitPrice()).totalPrice(item.getTotalPrice())
-                            .orderStatus(item.getOrderStatus()).deliveredAt(item.getDeliveredAt())
-                            .canReview(canReview).hasReviewed(hasReviewed)
-                            .reviewId(reviewId).writeReviewUrl(canReview && !hasReviewed ? "/api/auth/user/products/reviews/write?productId=" + item.getProductId() + "&orderNumber=" + item.getOrderNumber() : null)
-                            .viewReviewUrl(hasReviewed ?"/api/auth/user/products/reviews/" + reviewId : null).build();}).toList();
+                    // Fetch actual product name & image from products-service
+                    String productName  = null;
+                    String productImage = null;
+                    try {
+                        Map<String, Object> product = productsClient.getProductById(item.getProductId());
+                        if (product != null) {
+                            // Product entity uses "name" field
+                            Object nameObj = product.get("name");
+                            if (nameObj != null) productName = nameObj.toString();
+
+                            // Product entity uses "productUrl" for image
+                            Object imgObj = product.get("productUrl");
+                            if (imgObj != null) productImage = imgObj.toString();
+                        }
+                    } catch (Exception e) {
+                        // products-service unavailable — fall back to "Product #id"
+                        productName = "Product #" + item.getProductId();
+                    }
+
+                    return OrderItemResponse.builder()
+                            .productId(item.getProductId())
+                            .productName(productName)
+                            .productImage(productImage)
+                            .barcode(item.getBarcode())
+                            .quantity(item.getQuantity())
+                            .unitPrice(item.getUnitPrice())
+                            .totalPrice(item.getTotalPrice())
+                            .gstRate(item.getGstRate())
+                            .gstAmount(item.getGstAmount())
+                            .orderStatus(item.getOrderStatus())
+                            .deliveredAt(item.getDeliveredAt())
+                            .canReview(canReview)
+                            .hasReviewed(hasReviewed)
+                            .reviewId(reviewId)
+                            .writeReviewUrl(canReview && !hasReviewed
+                                    ? "/api/auth/user/products/reviews/write?productId=" + item.getProductId() + "&orderNumber=" + item.getOrderNumber()
+                                    : null)
+                            .viewReviewUrl(hasReviewed
+                                    ? "/api/auth/user/products/reviews/" + reviewId
+                                    : null)
+                            .build();
+                }).toList();
     }
 
 

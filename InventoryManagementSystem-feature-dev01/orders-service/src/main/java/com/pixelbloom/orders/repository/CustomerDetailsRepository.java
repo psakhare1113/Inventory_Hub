@@ -10,8 +10,11 @@ import java.util.List;
 
 @Repository
 public interface CustomerDetailsRepository extends JpaRepository<CustomerDetails, Long> {
-    //List<CustomerDetails> findByCustomerId(Long customerId);
 
-    CustomerDetails findBycustomerId(Long customerId);
-// findByCustomerId(Long customerId);
+    CustomerDetails findByCustomerId(Long customerId);
+
+    // Legacy alias — kept for backward compatibility
+    default CustomerDetails findBycustomerId(Long customerId) {
+        return findByCustomerId(customerId);
+    }
 }

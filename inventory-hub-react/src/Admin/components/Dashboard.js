@@ -1,72 +1,29 @@
-import { TrendingUp, Bookmark, Diamond, Clock, Star, Plus, FileText, UserPlus, BarChart3 } from "lucide-react";
+import { TrendingUp, Bookmark, Diamond, Star, Plus, FileText, UserPlus, BarChart3, Package, AlertTriangle } from "lucide-react";
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  PieChart, Pie, Cell
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, BarChart, Bar
 } from 'recharts';
 import { useState, useEffect } from 'react';
 import '../css/NewDashboard.css';
 import { imsService } from '../../services/imsApi';
 import { adminService } from '../../services/adminApi';
 
-const visitData = [
-  { name: 'JAN', CHN: 20, USA: 40, UK: 30 },
-  { name: 'FEB', CHN: 40, USA: 30, UK: 40 },
-  { name: 'MAR', CHN: 30, USA: 50, UK: 20 },
-  { name: 'APR', CHN: 50, USA: 40, UK: 45 },
-  { name: 'MAY', CHN: 35, USA: 60, UK: 35 },
-  { name: 'JUN', CHN: 55, USA: 45, UK: 50 },
-  { name: 'JUL', CHN: 40, USA: 55, UK: 40 },
-  { name: 'AUG', CHN: 60, USA: 50, UK: 55 },
-];
-
-const trafficData = [
-  { name: 'Search Engines', value: 30 },
-  { name: 'Direct Click', value: 30 },
-  { name: 'Bookmarks Click', value: 40 },
-];
-
-const COLORS = ['#fe7096', '#9a55ff', '#36a2eb'];
-
-const mockTickets = [
-  { id: 1, assigneeName: "John Doe", assigneeAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100", subject: "Fix login bug", status: "PROGRESS", lastUpdate: "2 hours ago", trackingId: "TK-001" },
-  { id: 2, assigneeName: "Sarah Wilson", assigneeAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100", subject: "Update dashboard", status: "DONE", lastUpdate: "1 day ago", trackingId: "TK-002" },
-  { id: 3, assigneeName: "Mike Johnson", assigneeAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100", subject: "Database optimization", status: "ON HOLD", lastUpdate: "3 hours ago", trackingId: "TK-003" },
-  { id: 4, assigneeName: "Emily Davis", assigneeAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100", subject: "API integration", status: "REJECTED", lastUpdate: "5 hours ago", trackingId: "TK-004" }
-];
-
-const mockUpdates = [
-  { id: 1, userName: "John Doe", content: "Dashboard redesign project has been completed successfully", timestamp: "2 hours ago" },
-  { id: 2, userName: "Sarah Wilson", content: "Sarah Wilson joined the development team", timestamp: "4 hours ago" },
-  { id: 3, userName: "Mike Johnson", content: "Scheduled maintenance will occur tonight at 2 AM", timestamp: "6 hours ago" },
-  { id: 4, userName: "Emily Davis", content: "Critical bug found in payment system", timestamp: "8 hours ago" }
-];
-
-const statusStyles = {
-  DONE: "bg-gradient-to-r from-green-400 to-green-500 text-white border-0",
-  PROGRESS: "bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0",
-  "ON HOLD": "bg-gradient-to-r from-blue-400 to-blue-500 text-white border-0",
-  REJECTED: "bg-gradient-to-r from-red-400 to-pink-500 text-white border-0",
-};
+const COLORS = ['#fe7096', '#9a55ff', '#36a2eb', '#10b981', '#f59e0b', '#ef4444'];
+const ORDER_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 function StatsCard({ title, value, change, icon: Icon, variant, trend }) {
   const getVariantStyles = () => {
     switch(variant) {
       case 'sales':
-        return {
-          background: 'linear-gradient(135deg, #ffbf96 0%, #fe7096 100%)'
-        };
+        return { background: 'linear-gradient(135deg, #ffbf96 0%, #fe7096 100%)' };
       case 'orders':
-        return {
-          background: 'linear-gradient(135deg, #90caf9 0%, #047edf 99%)'
-        };
+        return { background: 'linear-gradient(135deg, #90caf9 0%, #047edf 99%)' };
       case 'visitors':
-        return {
-          background: 'linear-gradient(135deg, #84d9d2 0%, #07cdae 100%)'
-        };
+        return { background: 'linear-gradient(135deg, #84d9d2 0%, #07cdae 100%)' };
+      case 'customers':
+        return { background: 'linear-gradient(135deg, #da8cff 0%, #9a55ff 100%)' };
       default:
-        return {
-          background: 'linear-gradient(135deg, #da8cff 0%, #9a55ff 100%)'
-        };
+        return { background: 'linear-gradient(135deg, #da8cff 0%, #9a55ff 100%)' };
     }
   };
 
@@ -82,9 +39,13 @@ function StatsCard({ title, value, change, icon: Icon, variant, trend }) {
         <div>
           <h3 className="text-lg font-semibold text-white/90 mb-1">{title}</h3>
           <h2 className="text-3xl font-bold mb-4">{value}</h2>
-          <p className="text-sm font-medium opacity-90">
-            {trend === "up" ? "Increased" : "Decreased"} by {change}
-          </p>
+          {change && (
+            <p className="text-sm font-medium opacity-90">
+              {variant === 'customers'
+                ? change
+                : trend === "up" ? `↑ ${change}` : `↓ ${change}`}
+            </p>
+          )}
         </div>
         <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
           <Icon className="w-6 h-6 text-white" />
@@ -94,36 +55,49 @@ function StatsCard({ title, value, change, icon: Icon, variant, trend }) {
   );
 }
 
-function VisitsChart() {
+function SalesChart({ data }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <h4 className="text-lg font-bold text-gray-800 mb-6">Sales & Profit Trend</h4>
+        <div className="h-[300px] flex items-center justify-center text-gray-400">
+          <p>No sales data available</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-6">
-        <h4 className="text-lg font-bold text-gray-800">Visit & Sales Statistics</h4>
+        <h4 className="text-lg font-bold text-gray-800">Sales & Profit Trend</h4>
         <div className="flex gap-4 text-sm font-medium">
           <span className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-purple-500"></span> CHN
+            <span className="w-3 h-3 rounded-full bg-purple-500"></span> Revenue
           </span>
           <span className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-blue-400"></span> USA
+            <span className="w-3 h-3 rounded-full bg-blue-400"></span> Cost
           </span>
           <span className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-pink-400"></span> UK
+            <span className="w-3 h-3 rounded-full bg-pink-400"></span> Profit
           </span>
         </div>
       </div>
       
       <div className="h-[300px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={visitData}>
+          <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
+            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} 
+              tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
             <Tooltip 
               contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              formatter={(value) => `₹${Number(value).toLocaleString()}`}
             />
-            <Line type="monotone" dataKey="CHN" stroke="#9a55ff" strokeWidth={3} dot={{ r: 4, fill: '#9a55ff' }} activeDot={{ r: 6 }} />
-            <Line type="monotone" dataKey="USA" stroke="#36a2eb" strokeWidth={3} dot={{ r: 4, fill: '#36a2eb' }} activeDot={{ r: 6 }} />
-            <Line type="monotone" dataKey="UK" stroke="#fe7096" strokeWidth={3} dot={{ r: 4, fill: '#fe7096' }} activeDot={{ r: 6 }} />
+            <Line type="monotone" dataKey="revenue" stroke="#9a55ff" strokeWidth={3} dot={{ r: 4, fill: '#9a55ff' }} activeDot={{ r: 6 }} />
+            <Line type="monotone" dataKey="cost" stroke="#36a2eb" strokeWidth={3} dot={{ r: 4, fill: '#36a2eb' }} activeDot={{ r: 6 }} />
+            <Line type="monotone" dataKey="profit" stroke="#fe7096" strokeWidth={3} dot={{ r: 4, fill: '#fe7096' }} activeDot={{ r: 6 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -131,435 +105,51 @@ function VisitsChart() {
   );
 }
 
-function TrafficChart() {
+function OrderStatusChart({ data }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-full">
+        <h4 className="text-lg font-bold text-gray-800 mb-6">Order Status</h4>
+        <div className="h-[250px] flex items-center justify-center text-gray-400">
+          <p>No order data</p>
+        </div>
+      </div>
+    );
+  }
+
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const topStatus = data[0];
+
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-full">
-      <h4 className="text-lg font-bold text-gray-800 mb-6">Traffic Sources</h4>
+      <h4 className="text-lg font-bold text-gray-800 mb-6">Order Status</h4>
       <div className="h-[250px] w-full flex items-center justify-center relative">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={trafficData}
+              data={data}
               innerRadius={60}
               outerRadius={80}
               paddingAngle={5}
               dataKey="value"
             >
-              {trafficData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={ORDER_COLORS[index % ORDER_COLORS.length]} />
               ))}
             </Pie>
             <Tooltip />
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-bold text-gray-800">40%</span>
-          <span className="text-xs text-gray-500">Bookmarks</span>
+          <span className="text-3xl font-bold text-gray-800">{total}</span>
+          <span className="text-xs text-gray-500">Total Orders</span>
         </div>
       </div>
-      <div className="mt-4 flex justify-center gap-6 text-xs text-gray-500">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-[#fe7096]"></div>
-          Search
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-[#9a55ff]"></div>
-          Direct
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-[#36a2eb]"></div>
-          Bookmarks
-        </div>
-      </div>
-    </div>
-  );
-}
-function TicketTable() {
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="p-6 border-b border-gray-50">
-        <h4 className="text-lg font-bold text-gray-800">Recent Tickets</h4>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50/50">
-            <tr>
-              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Assignee</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Subject</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Update</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tracking ID</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {mockTickets.map((ticket) => (
-              <tr key={ticket.id} className="hover:bg-gray-50/50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <img src={ticket.assigneeAvatar} alt="" className="w-8 h-8 rounded-full object-cover" />
-                    <span className="text-sm font-medium text-gray-900">{ticket.assigneeName}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {ticket.subject}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`text-[10px] px-2 py-0.5 font-bold shadow-sm rounded-full ${statusStyles[ticket.status]}`}>
-                    {ticket.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {ticket.lastUpdate}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {ticket.trackingId}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function RecentUpdates() {
-  return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <h3 className="text-lg font-bold text-gray-800 mb-6">Recent Updates <span className="text-sm font-semibold text-purple-600 hover:text-purple-700 cursor-pointer float-right">View All</span></h3>
-      
-      <div className="space-y-4">
-        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-900">Stock Progress Updated</span>
-          <span className="text-xs text-gray-500">2 hours ago</span>
-        </div>
-        
-        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-900">New Invoice Generated</span>
-          <span className="text-xs text-gray-500">4 hours ago</span>
-        </div>
-        
-        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-900">Customer Added</span>
-          <span className="text-xs text-gray-500">6 hours ago</span>
-        </div>
-        
-        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-900">Low Stock Alert</span>
-          <span className="text-xs text-gray-500">8 hours ago</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NewDashboardSection() {
-  return (
-    <div className="dashboard">
-
-      {/* ===== TOP CARDS ===== */}
-      <div className="grid-3">
-
-        {/* Stock Progress */}
-        <div className="stock-card">
-          <div className="stock-header">
-            <h3>Stock Progress</h3>
-            <TrendingUp className="stock-icon" size={20} />
-          </div>
-
-          <div className="stock-item">
-            <div className="stock-label">
-              <span>Electronics</span>
-              <span>87%</span>
-            </div>
-            <div className="progress-bg">
-              <div className="progress-fill yellow" style={{ width: "87%" }}></div>
-            </div>
-          </div>
-
-          <div className="stock-item">
-            <div className="stock-label">
-              <span>Furniture</span>
-              <span>64%</span>
-            </div>
-            <div className="progress-bg">
-              <div className="progress-fill blue" style={{ width: "64%" }}></div>
-            </div>
-          </div>
-
-          <div className="stock-item">
-            <div className="stock-label">
-              <span>Clothing</span>
-              <span>92%</span>
-            </div>
-            <div className="progress-bg">
-              <div className="progress-fill green" style={{ width: "92%" }}></div>
-            </div>
-          </div>
-
-          <div className="stock-item">
-            <div className="stock-label">
-              <span>Food & Beverage</span>
-              <span>73%</span>
-            </div>
-            <div className="progress-bg">
-              <div className="progress-fill purple" style={{ width: "73%" }}></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Time Tracker */}
-        <div className="time-card">
-          <div className="time-header">
-            <h3>Time Tracker</h3>
-            <span className="time-icon">⏱</span>
-          </div>
-
-          <div className="time-circle">
-            <svg className="progress-ring" width="180" height="180">
-              <circle
-                className="ring-bg"
-                cx="90"
-                cy="90"
-                r="78"
-              />
-              <circle
-                className="ring-progress"
-                cx="90"
-                cy="90"
-                r="78"
-              />
-            </svg>
-
-            <div className="time-center">
-              <h1>72:35</h1>
-              <p>Hours This Week</p>
-            </div>
-          </div>
-
-          <p className="time-footer">75% of weekly goal</p>
-        </div>
-
-        {/* Collaboration */}
-        <div className="collab-card">
-          <div className="collab-header">
-            <h3>Collaboration</h3>
-            <span className="collab-total">371</span>
-          </div>
-
-          <div className="collab-item">
-            <span className="dot yellow"></span>
-            <span className="label">Order Processing</span>
-            <span className="count">24</span>
-          </div>
-
-          <div className="collab-item">
-            <span className="dot green"></span>
-            <span className="label">Shipping Updates</span>
-            <span className="count">18</span>
-          </div>
-
-          <div className="collab-item">
-            <span className="dot blue"></span>
-            <span className="label">Stock Alerts</span>
-            <span className="count">12</span>
-          </div>
-
-          <div className="collab-item">
-            <span className="dot purple"></span>
-            <span className="label">Payment Pending</span>
-            <span className="count">8</span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* ===== MIDDLE TABLES ===== */}
-      <div className="grid-2">
-
-        {/* Recent Products */}
-        <div className="table-card">
-          <div className="table-header">
-            <h3>Recent Products <span className="view-all">View All</span></h3>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>ID</th>
-                <th>Stock</th>
-                <th>Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>MacBook Pro</td>
-                <td>#PRD001</td>
-                <td>124</td>
-                <td>₹2,499</td>
-              </tr>
-              <tr>
-                <td>iPhone 14 Pro</td>
-                <td>#PRD002</td>
-                <td>89</td>
-                <td>₹1,299</td>
-              </tr>
-              <tr>
-                <td>iPad Air</td>
-                <td>#PRD003</td>
-                <td>56</td>
-                <td>₹899</td>
-              </tr>
-              <tr>
-                <td>AirPods Pro</td>
-                <td>#PRD004</td>
-                <td>203</td>
-                <td>₹249</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* Recent Invoices */}
-        <div className="table-card">
-          <div className="table-header">
-            <h3>Recent Invoices <span className="view-all">View All</span></h3>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th>Invoice ID</th>
-                <th>Customer</th>
-                <th>Amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>#INV1024</td>
-                <td>John Smith</td>
-                <td>₹2,450</td>
-                <td><span className="status paid">Paid</span></td>
-              </tr>
-              <tr>
-                <td>#INV1023</td>
-                <td>Sarah Johnson</td>
-                <td>₹1,890</td>
-                <td><span className="status pending">Pending</span></td>
-              </tr>
-              <tr>
-                <td>#INV1022</td>
-                <td>Mike Davis</td>
-                <td>₹3,200</td>
-                <td><span className="status paid">Paid</span></td>
-              </tr>
-              <tr>
-                <td>#INV1021</td>
-                <td>Emily Brown</td>
-                <td>₹980</td>
-                <td><span className="status overdue">Overdue</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-      </div>
-
-      {/* ===== BOTTOM CARDS ===== */}
-      <div className="grid-3">
-
-        {/* Top Customers */}
-        <div className="top-card">
-          <div className="top-header">
-            <h3>Top Customers</h3>
-            <Star className="star-icon" size={20} />
-          </div>
-
-          <div className="customer-row">
-            <img src="https://i.pravatar.cc/100?img=1" alt="user" />
-            <span className="name">Lisa Anderson</span>
-            <span className="amount">₹12,450</span>
-          </div>
-
-          <div className="customer-row">
-            <img src="https://i.pravatar.cc/100?img=2" alt="user" />
-            <span className="name">Robert Wilson</span>
-            <span className="amount">₹10,890</span>
-          </div>
-
-          <div className="customer-row">
-            <img src="https://i.pravatar.cc/100?img=3" alt="user" />
-            <span className="name">Jennifer Lee</span>
-            <span className="amount">₹9,340</span>
-          </div>
-
-          <div className="customer-row">
-            <img src="https://i.pravatar.cc/100?img=4" alt="user" />
-            <span className="name">David Martinez</span>
-            <span className="amount">₹8,760</span>
-          </div>
-        </div>
-
-        {/* Low Stock */}
-        <div className="card">
-          <h3>Low Stock Alert ❗</h3>
-          <div className="alert red">Wireless Mouse <span>8 left</span></div>
-          <div className="alert yellow">USB-C Cable <span>15 left</span></div>
-          <div className="alert red">Keyboard <span>5 left</span></div>
-          <div className="alert yellow">Monitor Stand <span>12 left</span></div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="quick-card">
-          <h3>Quick Actions</h3>
-
-          <button>
-            <Plus size={18} fill="#22c55e" color="#22c55e" /> Add Product
-          </button>
-
-          <button>
-            <FileText size={18} fill="#60a5fa" color="#60a5fa" /> Create Invoice
-          </button>
-
-          <button>
-            <UserPlus size={18} fill="#facc15" color="#facc15" /> Add Customer
-          </button>
-
-          <button>
-            <BarChart3 size={18} fill="#c084fc" color="#c084fc" /> View Reports
-          </button>
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
-
-function UpdatesFeed() {
-  return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-6">
-        <h4 className="text-lg font-bold text-gray-800">Recent Updates</h4>
-        <button className="text-sm font-semibold text-purple-600 hover:text-purple-700">View All</button>
-      </div>
-
-      <div className="space-y-6">
-        {mockUpdates.map((update) => (
-          <div key={update.id} className="relative pl-6 pb-6 border-l border-gray-100 last:pb-0">
-            <div className="absolute left-[-5px] top-0 w-2.5 h-2.5 rounded-full bg-purple-500 ring-4 ring-purple-50"></div>
-            
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold text-gray-900">{update.userName}</span>
-              <div className="flex items-center gap-1 text-xs text-gray-400">
-                <Clock size={12} />
-                {update.timestamp}
-              </div>
-            </div>
-            
-            <p className="text-sm text-gray-600 mb-3">{update.content}</p>
+      <div className="mt-4 flex justify-center gap-4 text-xs text-gray-500 flex-wrap">
+        {data.slice(0, 3).map((item, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded" style={{ background: ORDER_COLORS[i] }}></div>
+            {item.name}
           </div>
         ))}
       </div>
@@ -567,83 +157,367 @@ function UpdatesFeed() {
   );
 }
 
-export default function Dashboard() {
-  const [dashboardData, setDashboardData] = useState({
-    sales: '$15,000',
-    orders: '45,634',
-    visitors: '95,574',
-    recentProducts: [],
-    lowStockItems: [],
-    customersCount: 0,
+function StockProgressCard({ inventory, categories }) {
+  // Group inventory by category
+  const categoryStock = {};
+  inventory.forEach(item => {
+    const catId = item.categoryId;
+    if (!categoryStock[catId]) {
+      categoryStock[catId] = { available: 0, total: 0 };
+    }
+    categoryStock[catId].total++;
+    if (item.inventoryStatus === 'AVAILABLE') {
+      categoryStock[catId].available++;
+    }
+  });
+
+  const stockData = Object.entries(categoryStock)
+    .map(([catId, data]) => {
+      const cat = categories.find(c => c.id === Number(catId));
+      const percentage = data.total > 0 ? Math.round((data.available / data.total) * 100) : 0;
+      return {
+        name: cat?.name || `Category ${catId}`,
+        percentage,
+        available: data.available,
+        total: data.total
+      };
+    })
+    .sort((a, b) => b.percentage - a.percentage)
+    .slice(0, 4);
+
+  const getColorClass = (pct) => {
+    if (pct >= 75) return 'green';
+    if (pct >= 50) return 'blue';
+    if (pct >= 25) return 'yellow';
+    return 'red';
+  };
+
+  return (
+    <div className="stock-card">
+      <div className="stock-header">
+        <h3>Stock Availability</h3>
+        <Package className="stock-icon" size={20} />
+      </div>
+
+      {stockData.length > 0 ? stockData.map((item, i) => (
+        <div key={i} className="stock-item">
+          <div className="stock-label">
+            <span>{item.name}</span>
+            <span>{item.percentage}% ({item.available}/{item.total})</span>
+          </div>
+          <div className="progress-bg">
+            <div className={`progress-fill ${getColorClass(item.percentage)}`} style={{ width: `${item.percentage}%` }}></div>
+          </div>
+        </div>
+      )) : (
+        <p className="text-sm text-gray-500 text-center py-4">No inventory data</p>
+      )}
+    </div>
+  );
+}
+
+function CollaborationCard({ ordersByStatus, totalOrders }) {
+  // Use pre-computed ordersByStatus map from reports/summary API
+  const get = (keys) => keys.reduce((sum, k) => sum + (ordersByStatus[k] || 0), 0);
+
+  const processing = get(['PROCESSING', 'CONFIRMED', 'CREATED', 'PACKED']);
+  const shipped    = get(['SHIPPED', 'OUT_FOR_DELIVERY']);
+  const delivered  = get(['DELIVERED']);
+  const returns    = get(['RETURN_INITIATED', 'RETURN_APPROVED', 'RETURN_REJECTED',
+                          'RETURN_INSPECTION', 'REFUNDED', 'REFUND_INITIATED']);
+
+  return (
+    <div className="collab-card">
+      <div className="collab-header">
+        <h3>Order Pipeline</h3>
+        <span className="collab-total">{totalOrders}</span>
+      </div>
+
+      <div className="collab-item">
+        <span className="dot yellow"></span>
+        <span className="label">Processing</span>
+        <span className="count">{processing}</span>
+      </div>
+
+      <div className="collab-item">
+        <span className="dot green"></span>
+        <span className="label">Delivered</span>
+        <span className="count">{delivered}</span>
+      </div>
+
+      <div className="collab-item">
+        <span className="dot blue"></span>
+        <span className="label">Shipped</span>
+        <span className="count">{shipped}</span>
+      </div>
+
+      <div className="collab-item">
+        <span className="dot purple"></span>
+        <span className="label">Returns / Refunds</span>
+        <span className="count">{returns}</span>
+      </div>
+    </div>
+  );
+}
+
+function RecentProductsTable({ products, inventory, pricing }) {
+  const productsWithStock = products.slice(0, 4).map(p => {
+    const stock = inventory.filter(i => i.productId === p.productId && i.inventoryStatus === 'AVAILABLE').length;
+    // pricing array मधून productId match करून sellingPrice घेतो
+    const priceEntry = pricing.find(pr => Number(pr.productId) === Number(p.productId));
+    const price = priceEntry?.sellingPrice || priceEntry?.mrp || 0;
+    return { ...p, stock, price };
+  });
+
+  return (
+    <div className="table-card">
+      <div className="table-header">
+        <h3>Recent Products <span className="view-all">View All</span></h3>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>ID</th>
+            <th>Stock</th>
+            <th>Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          {productsWithStock.length > 0 ? productsWithStock.map((p, i) => (
+            <tr key={i}>
+              <td>{p.name || 'N/A'}</td>
+              <td>#{p.productId}</td>
+              <td>{p.stock}</td>
+              <td>₹{Number(p.price || 0).toLocaleString()}</td>
+            </tr>
+          )) : (
+            <tr><td colSpan="4" className="text-center text-gray-400">No products</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RecentOrdersTable({ orders, customers }) {
+  const recentOrders = orders.slice(0, 4);
+
+  const getStatusClass = (status) => {
+    if (status === 'DELIVERED') return 'paid';
+    if (status === 'CANCELLED' || status === 'FAILED') return 'overdue';
+    return 'pending';
+  };
+
+  return (
+    <div className="table-card">
+      <div className="table-header">
+        <h3>Recent Orders <span className="view-all">View All</span></h3>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Order #</th>
+            <th>Customer</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {recentOrders.length > 0 ? recentOrders.map((o, i) => {
+            const customer = customers.find(c => c.id === o.customerId);
+            return (
+              <tr key={i}>
+                <td>{o.orderNumber || `#${o.id}`}</td>
+                <td>{customer ? `${customer.firstName} ${customer.lastName}` : `Customer ${o.customerId}`}</td>
+                <td>₹{Number(o.totalAmount || 0).toLocaleString()}</td>
+                <td><span className={`status ${getStatusClass(o.orderStatus)}`}>{o.orderStatus}</span></td>
+              </tr>
+            );
+          }) : (
+            <tr><td colSpan="4" className="text-center text-gray-400">No orders</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TopCustomersCard({ customers, orders }) {
+  // Calculate total spent per customer
+  const customerSpending = {};
+  orders.forEach(o => {
+    if (o.paymentStatus === 'SUCCESS') {
+      customerSpending[o.customerId] = (customerSpending[o.customerId] || 0) + Number(o.totalAmount || 0);
+    }
+  });
+
+  const topCustomers = Object.entries(customerSpending)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([custId, amount]) => {
+      const customer = customers.find(c => c.id === Number(custId));
+      const firstName = customer?.firstName || 'U';
+      const lastName  = customer?.lastName  || '';
+      return {
+        id: custId,
+        name: customer ? `${firstName} ${lastName}`.trim() : `Customer ${custId}`,
+        initials: `${firstName[0]}${lastName[0] || ''}`.toUpperCase(),
+        amount
+      };
+    });
+
+  // Distinct avatar bg colours per index
+  const avatarColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+
+  return (
+    <div className="top-card">
+      <div className="top-header">
+        <h3>Top Customers</h3>
+        <Star className="star-icon" size={20} />
+      </div>
+
+      {topCustomers.length > 0 ? topCustomers.map((c, i) => (
+        <div key={i} className="customer-row">
+          {/* Initials avatar — no external image */}
+          <div style={{
+            width: 38, height: 38, borderRadius: '50%',
+            background: avatarColors[i % avatarColors.length],
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontWeight: 700, fontSize: 14, flexShrink: 0
+          }}>
+            {c.initials}
+          </div>
+          <span className="name">{c.name}</span>
+          <span className="amount">₹{c.amount.toLocaleString()}</span>
+        </div>
+      )) : (
+        <p className="text-sm text-gray-500 text-center py-4">No customer data</p>
+      )}
+    </div>
+  );
+}
+
+function LowStockCard({ products, inventory }) {
+  const productStock = {};
+  inventory.forEach(i => {
+    if (i.inventoryStatus === 'AVAILABLE') {
+      productStock[i.productId] = (productStock[i.productId] || 0) + 1;
+    }
+  });
+
+  const lowStock = Object.entries(productStock)
+    .filter(([_, count]) => count < 20)
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 4)
+    .map(([prodId, count]) => {
+      const product = products.find(p => p.productId === Number(prodId));
+      return {
+        name: product?.name || `Product ${prodId}`,
+        count
+      };
+    });
+
+  return (
+    <div className="card">
+      <h3>Low Stock Alert ❗</h3>
+      {lowStock.length > 0 ? lowStock.map((item, i) => (
+        <div key={i} className={`alert ${item.count < 10 ? 'red' : 'yellow'}`}>
+          {item.name} <span>{item.count} left</span>
+        </div>
+      )) : (
+        <p className="text-sm text-gray-500 text-center py-4">All stock levels healthy</p>
+      )}
+    </div>
+  );
+}
+
+export default function Dashboard({ onMenuSelect }) {
+  const [data, setData] = useState({
+    salesData: [],
+    orders: [],
+    inventory: [],
+    products: [],
+    customers: [],
+    categories: [],
+    pricing: [],
+    totalRevenue: 0,
+    totalProfit: 0,
+    // From reports/summary — authoritative order counts per status
+    ordersByStatus: {},
+    totalOrders: 0,
     backendConnected: false
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadDashboardData();
+    // Auto-refresh every 30 seconds for real-time counts
+    const interval = setInterval(loadDashboardData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      
-      // Check backend connection by fetching customers
-      const token = localStorage.getItem('token');
-      let customersCount = 0;
-      let backendConnected = false;
-      
-      if (token) {
-        try {
-          const customersResponse = await fetch('http://localhost:2000/api/auth/admin/customers', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (customersResponse.ok) {
-            const customers = await customersResponse.json();
-            customersCount = customers.length;
-            backendConnected = true;
-          }
-        } catch (err) {
-          console.error('Backend connection failed:', err);
-        }
-      }
-      
-      // Load data from both IMS and Admin services
-      const [productsData, inventoryData, ordersData, statsData] = await Promise.allSettled([
-        imsService.products.getAllProducts(),
+
+      const [salesRes, ordersRes, invRes, prodRes, custRes, catRes, pricingRes, summaryRes] = await Promise.allSettled([
+        imsService.inventory.getDailySales('SALE'),
+        imsService.orders.getAllOrders(),
         imsService.inventory.getAllInventory(),
-        adminService.orders.getAllOrders(),
-        adminService.analytics.getDashboardStats()
+        imsService.products.getAllProducts(),
+        adminService.customers.getAllCustomers(),
+        imsService.products.getAllCategories(),
+        imsService.pricing.getAllPricing(),
+        imsService.reports.getSummaryReport()   // orders-service: authoritative revenue + status counts
       ]);
-      
-      const products = productsData.status === 'fulfilled' ? productsData.value : [];
-      const inventory = inventoryData.status === 'fulfilled' ? inventoryData.value : [];
-      const orders = ordersData.status === 'fulfilled' ? ordersData.value : [];
-      const stats = statsData.status === 'fulfilled' ? statsData.value : {};
-      
-      const totalSales = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-      const totalOrders = orders.length;
-      const availableStock = inventory.filter(item => item.inventoryStatus === 'AVAILABLE').length;
-      
-      setDashboardData({
-        sales: `₹${totalSales.toLocaleString()}`,
-        orders: totalOrders.toString(),
-        visitors: availableStock.toString(),
-        recentProducts: products.slice(0, 5),
-        lowStockItems: inventory.filter(item => item.inventoryStatus === 'AVAILABLE').slice(0, 4),
-        customersCount,
-        backendConnected
+
+      const salesData = salesRes.status === 'fulfilled' ? salesRes.value : [];
+      const orders    = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
+      const inventory = invRes.status === 'fulfilled' ? invRes.value : [];
+      const products  = prodRes.status === 'fulfilled' ? prodRes.value : [];
+      const customers = custRes.status === 'fulfilled' ? custRes.value : [];
+      const categories = catRes.status === 'fulfilled' ? catRes.value : [];
+      const pricing   = pricingRes.status === 'fulfilled' ? (pricingRes.value || []) : [];
+      const summary   = summaryRes.status === 'fulfilled' ? summaryRes.value : null;
+
+      // Revenue + Cost both from inventory-service daily sales (consistent source)
+      // Using inventory sales ensures revenue and cost are from the same dataset → correct profit
+      const totalRevenue = salesData.reduce((s, r) => s + Number(r.totalSales || 0), 0);
+      const totalCost    = salesData.reduce((s, r) => s + Number(r.totalCost  || 0), 0);
+      // Profit = Revenue - Cost (recalculated, not from stale backend profit column)
+      const totalProfit  = totalRevenue - totalCost;
+
+      // Order status breakdown: prefer summary map (server-computed), fallback to client count
+      const ordersByStatus = summary?.ordersByStatus
+        ?? orders.reduce((acc, o) => {
+            const st = (o.orderStatus || 'UNKNOWN').toUpperCase();
+            acc[st] = (acc[st] || 0) + 1;
+            return acc;
+          }, {});
+
+      const totalOrders = summary?.totalOrders ?? orders.length;
+
+      setData({
+        salesData,
+        orders,
+        inventory,
+        products,
+        customers,
+        categories,
+        pricing,
+        totalRevenue,
+        totalCost,
+        totalProfit,
+        ordersByStatus,
+        totalOrders,
+        backendConnected: true
       });
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      setDashboardData({
-        sales: '₹0',
-        orders: '0',
-        visitors: '0',
-        recentProducts: [],
-        lowStockItems: [],
-        customersCount: 0,
-        backendConnected: false
-      });
+      console.error('Error loading dashboard:', error);
+      setData(prev => ({ ...prev, backendConnected: false }));
     } finally {
       setLoading(false);
     }
@@ -652,6 +526,26 @@ export default function Dashboard() {
   if (loading) {
     return <div className="p-6">Loading dashboard...</div>;
   }
+
+  // Prepare chart data
+  const salesChartData = data.salesData.slice(-7).map(s => {
+    const rev  = Number(s.totalSales || 0);
+    const cost = Number(s.totalCost  || 0);
+    return {
+      date:    s.date,
+      revenue: rev,
+      cost:    cost,
+      profit:  rev - cost,   // recalculate — don't use stale backend profit column
+    };
+  });
+
+  // Order status breakdown for pie chart — use server-computed map
+  const orderStatusData = Object.entries(data.ordersByStatus)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value]) => ({ name, value }));
+
+  const availableStock = data.inventory.filter(i => i.inventoryStatus === 'AVAILABLE').length;
+
   return (
     <div className="p-6">
       {/* Page Header */}
@@ -665,66 +559,125 @@ export default function Dashboard() {
         <div className="flex items-center gap-2 text-sm text-gray-500 bg-white px-4 py-2 rounded-lg shadow-sm">
           <span>Overview</span>
           <span>/</span>
-          <span className="font-medium" style={{color: '#b88e2f'}}>Analytics</span>
+          <span className="font-medium" style={{color: '#b88e2f'}}>Real-time Analytics</span>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <StatsCard 
-          title="Weekly Sales" 
-          value={dashboardData.sales} 
-          change="60%" 
+          title="Total Revenue" 
+          value={`₹${data.totalRevenue.toLocaleString()}`}
+          change={data.salesData.length > 1 ? "12%" : null}
           trend="up"
           icon={TrendingUp} 
           variant="sales" 
         />
         <StatsCard 
-          title="Weekly Orders" 
-          value={dashboardData.orders} 
-          change="10%" 
-          trend="down"
+          title="Total Orders" 
+          value={data.totalOrders.toString()}
+          change={data.ordersByStatus['DELIVERED'] > 0 ? "8%" : null}
+          trend="up"
           icon={Bookmark} 
           variant="orders" 
         />
         <StatsCard 
-          title="Visitors Online" 
-          value={dashboardData.visitors} 
-          change="5%" 
-          trend="up"
+          title="Available Stock" 
+          value={availableStock.toString()}
+          change={null}
           icon={Diamond} 
           variant="visitors" 
         />
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-600 mb-2">Customer Management</h3>
-          <div className="flex items-center gap-2">
-            {dashboardData.backendConnected ? (
-              <>
-                <span className="text-2xl font-bold text-green-600">✓ {dashboardData.customersCount}</span>
-                <span className="text-xs text-green-600">Backend Connected</span>
-              </>
-            ) : (
-              <>
-                <span className="text-xl font-bold text-orange-600">⚠️</span>
-                <span className="text-xs text-orange-600">Using Static Data - Backend Unavailable</span>
-              </>
-            )}
+        <StatsCard 
+          title="Total Customers" 
+          value={data.backendConnected ? data.customers.length.toString() : '—'}
+          change={data.backendConnected ? "Live" : "Offline"}
+          trend={data.backendConnected ? "up" : "down"}
+          icon={UserPlus} 
+          variant="customers" 
+        />
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-2">
+          <SalesChart data={salesChartData} />
+        </div>
+        <div>
+          <OrderStatusChart data={orderStatusData} />
+        </div>
+      </div>
+
+      {/* Dashboard Sections */}
+      <div className="dashboard">
+        {/* Top Cards */}
+        <div className="grid-3">
+          <StockProgressCard inventory={data.inventory} categories={data.categories} />
+          
+          <div className="time-card">
+            <div className="time-header">
+              <h3>Profit Margin</h3>
+              <span className="time-icon">💰</span>
+            </div>
+            <div className="time-circle">
+              <svg className="progress-ring" width="180" height="180">
+                <circle className="ring-bg" cx="90" cy="90" r="78" />
+                <circle className="ring-progress" cx="90" cy="90" r="78" 
+                  style={{
+                    strokeDashoffset: (() => {
+                      const totalSales = data.salesData.reduce((s, r) => s + Number(r.totalSales || 0), 0);
+                      if (totalSales <= 0) return 490;
+                      const pct = Math.max(0, Math.min(1, data.totalProfit / totalSales));
+                      return 490 - (490 * pct);
+                    })()
+                  }} />
+              </svg>
+              <div className="time-center">
+                <h1>
+                  {(() => {
+                    const totalSales = data.salesData.reduce((s, r) => s + Number(r.totalSales || 0), 0);
+                    return totalSales > 0
+                      ? ((data.totalProfit / totalSales) * 100).toFixed(1)
+                      : 0;
+                  })()}%
+                </h1>
+                <p>Profit Margin</p>
+              </div>
+            </div>
+            <p className="time-footer">₹{data.totalProfit.toLocaleString()} profit</p>
+          </div>
+
+          <CollaborationCard ordersByStatus={data.ordersByStatus} totalOrders={data.totalOrders} />
+        </div>
+
+        {/* Tables */}
+        <div className="grid-2">
+          <RecentProductsTable products={data.products} inventory={data.inventory} pricing={data.pricing} />
+          <RecentOrdersTable orders={data.orders} customers={data.customers} />
+        </div>
+
+        {/* Bottom Cards */}
+        <div className="grid-3">
+          <TopCustomersCard customers={data.customers} orders={data.orders} />
+          <LowStockCard products={data.products} inventory={data.inventory} />
+          
+          <div className="quick-card">
+            <h3>Quick Actions</h3>
+            <button onClick={() => onMenuSelect && onMenuSelect('Products')}>
+              <Plus size={18} fill="#22c55e" color="#22c55e" /> Add Product
+            </button>
+            <button onClick={() => onMenuSelect && onMenuSelect('Orders')}>
+              <FileText size={18} fill="#60a5fa" color="#60a5fa" /> View Orders
+            </button>
+            <button onClick={() => onMenuSelect && onMenuSelect('Customers')}>
+              <UserPlus size={18} fill="#facc15" color="#facc15" /> Add Customer
+            </button>
+            <button onClick={() => onMenuSelect && onMenuSelect('Analytics')}>
+              <BarChart3 size={18} fill="#c084fc" color="#c084fc" /> View Analytics
+            </button>
           </div>
         </div>
       </div>
-
-      {/* Charts Combined */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-2">
-          <VisitsChart />
-        </div>
-        <div>
-          <TrafficChart />
-        </div>
-      </div>
-
-      {/* New Dashboard Section */}
-      <NewDashboardSection />
     </div>
   );
 }

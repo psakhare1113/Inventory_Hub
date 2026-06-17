@@ -13,9 +13,28 @@ import java.util.List;
 public class SubcategoryController {
     private final SubcategoryService subcategoryService;
 
+    /** All subcategories (level 2 + level 3) */
     @GetMapping
     public ResponseEntity<List<Subcategory>> getAllSubcategories() {
         return ResponseEntity.ok(subcategoryService.getAllSubcategories());
+    }
+
+    /** Level-2 subcategories only (parentSubcategoryId IS NULL) */
+    @GetMapping("/root")
+    public ResponseEntity<List<Subcategory>> getRootSubcategories() {
+        return ResponseEntity.ok(subcategoryService.getRootSubcategories());
+    }
+
+    /** All subcategories (level 2 + 3) under a root category */
+    @GetMapping("/category/{categoryId}")
+    public ResponseEntity<List<Subcategory>> getSubcategoriesByCategory(@PathVariable Long categoryId) {
+        return ResponseEntity.ok(subcategoryService.getSubcategoriesByCategory(categoryId));
+    }
+
+    /** Level-3 sub-subcategories under a given subcategory */
+    @GetMapping("/{parentSubcategoryId}/children")
+    public ResponseEntity<List<Subcategory>> getSubSubCategories(@PathVariable Long parentSubcategoryId) {
+        return ResponseEntity.ok(subcategoryService.getSubSubCategories(parentSubcategoryId));
     }
 
     @GetMapping("/{id}")

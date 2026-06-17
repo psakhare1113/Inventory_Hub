@@ -1,45 +1,35 @@
 import { useState } from "react";
 import { 
-  Home, 
-  Settings, 
-  BarChart2, 
-  FileText,
-  Menu,
-  X,
-  Package,
-  ShoppingCart,
-  Users,
-  FolderOpen,
-  Truck,
-  Receipt,
-  Building2,
-  ChevronLeft,
-  Contact,
-  Warehouse,
-  TrendingUp,
-  IndianRupee,
-  Server
+  Home, Settings, BarChart2, FileText, Menu, X,
+  ShoppingCart, Users, FolderOpen, Receipt, Building2,
+  ChevronLeft, Contact, Warehouse, TrendingUp, IndianRupee,
+  UserCheck, CreditCard, KeyRound, Layers,
+  Activity, MapPin, Search
 } from "lucide-react";
 import logo from "../images/logo.png";
 import "../css/Sidebar.css";
 
 const menuItems = [
-  { icon: Home, label: "Dashboard" },
-  { icon: Contact, label: "Contacts" },
-  { icon: Users, label: "Customers" },
+  { icon: Home,         label: "Dashboard" },
+  { icon: Contact,      label: "Contacts" },
+  { icon: Users,        label: "Customers" },
   { icon: ShoppingCart, label: "Products" },
-  { icon: IndianRupee, label: "Pricing" },
-  { icon: Warehouse, label: "Inventory" },
-  { icon: TrendingUp, label: "Analytics" },
-  { icon: FolderOpen, label: "Categories" },
-  { icon: FileText, label: "Orders" },
-  { icon: Package, label: "Packages" },
-  { icon: Receipt, label: "Invoice" },
-  { icon: Building2, label: "Suppliers" },
-  { icon: Truck, label: "Outgoing Products" },
-  { icon: BarChart2, label: "Reports" },
-  { icon: Server, label: "System Status" },
-  { icon: Settings, label: "Settings" },
+  { icon: IndianRupee,  label: "Pricing" },
+  { icon: Warehouse,    label: "Inventory" },
+  { icon: TrendingUp,   label: "Analytics" },
+  { icon: Activity,     label: "User Analytics" },
+  { icon: FolderOpen,   label: "Categories" },
+  { icon: FileText,     label: "Orders" },
+  { icon: CreditCard,   label: "Payments" },
+  { icon: Receipt,      label: "Invoice" },
+  { icon: MapPin,       label: "Warehouse Management" },
+  { icon: Search,       label: "Audit Management" },
+  { icon: Building2,    label: "Suppliers" },
+  { icon: UserCheck,    label: "Delivery Boys" },
+  { icon: BarChart2,    label: "Reports" },
+  { icon: Layers,       label: "Batch Management" },
+  { icon: KeyRound,     label: "Permissions" },
+  { icon: Settings,     label: "Settings" },
 ];
 
 export function Sidebar({ className, onMenuSelect, selectedMenu }) {
@@ -65,7 +55,7 @@ export function Sidebar({ className, onMenuSelect, selectedMenu }) {
         isCollapsed ? "lg:w-20 sidebar-collapsed" : "lg:w-64 sidebar-expanded",
         className
       )}>
-        {/* Header with Logo and Toggle */}
+        {/* Header */}
         <div className={cn(
           "h-16 flex items-center justify-between border-b border-gray-200 transition-all duration-300",
           isCollapsed ? "lg:px-3" : "px-6"
@@ -73,18 +63,14 @@ export function Sidebar({ className, onMenuSelect, selectedMenu }) {
           {!isCollapsed && (
             <div className="flex items-center gap-2 flex-1">
               <img src={logo} alt="Logo" className="w-8 h-8 flex-shrink-0" />
-              <span className="text-xl font-bold sidebar-inventory-text">
-                Admin
-              </span>
+              <span className="text-xl font-bold sidebar-inventory-text">Admin</span>
             </div>
           )}
-          
           {isCollapsed && (
             <div className="flex items-center justify-center w-full">
               <img src={logo} alt="Logo" className="w-8 h-8" />
             </div>
           )}
-          
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="hidden lg:flex p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 ml-auto flex-shrink-0"
@@ -97,36 +83,16 @@ export function Sidebar({ className, onMenuSelect, selectedMenu }) {
           </button>
         </div>
 
-        {/* User Profile Summary */}
-        {!isCollapsed && (
-          <div className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <img 
-                  src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60" 
-                  alt="Profile" 
-                  className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-100"
-                />
-                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></span>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-800">Admin User</p>
-                <p className="text-xs text-gray-500">Administrator</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Navigation */}
         <nav className={cn(
-          "flex-1 overflow-y-auto pb-4 transition-all duration-300",
+          "flex-1 overflow-y-auto pb-4 transition-all duration-300 pt-4",
           isCollapsed ? "px-2 space-y-2" : "px-4 space-y-1"
         )}>
           {menuItems.map((item) => {
             const isActive = selectedMenu === item.label;
             return (
-              <div 
-                key={item.label} 
+              <div
+                key={item.label}
                 onClick={() => {
                   setIsMobileOpen(false);
                   onMenuSelect && onMenuSelect(item.label);
@@ -134,19 +100,17 @@ export function Sidebar({ className, onMenuSelect, selectedMenu }) {
                 className={cn(
                   "flex items-center gap-3 rounded-lg transition-all duration-200 group relative cursor-pointer",
                   isCollapsed ? "lg:justify-center lg:p-2.5" : "px-4 py-3",
-                  isActive 
-                    ? "font-semibold sidebar-active-item" 
+                  isActive
+                    ? "font-semibold sidebar-active-item"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                 )}
               >
                 <div className={cn(
-                  "rounded-md transition-colors flex-shrink-0",
-                  isCollapsed ? "p-2" : "p-2",
+                  "rounded-md transition-colors flex-shrink-0 p-2",
                   isActive ? "sidebar-active-icon" : "text-gray-500 group-hover:text-gray-700"
                 )}>
                   <item.icon size={20} />
                 </div>
-                
                 {!isCollapsed && (
                   <div className="flex items-center justify-between flex-1 min-w-0">
                     <span className="whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>
@@ -156,7 +120,6 @@ export function Sidebar({ className, onMenuSelect, selectedMenu }) {
                     )} />
                   </div>
                 )}
-                
                 {isCollapsed && (
                   <div className="absolute left-full ml-3 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
                     {item.label}
@@ -168,9 +131,9 @@ export function Sidebar({ className, onMenuSelect, selectedMenu }) {
         </nav>
       </aside>
 
-      {/* Backdrop for mobile */}
+      {/* Mobile backdrop */}
       {isMobileOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/20 z-30 lg:hidden backdrop-blur-sm"
           onClick={() => setIsMobileOpen(false)}
         />

@@ -23,14 +23,14 @@ public class OrderEventPublisher {
     private final ObjectMapper objectMapper;
     public void publishOrderCreated(OrderCreatedEvent event) {
         try {
-          //  String message = objectMapper.writeValueAsString(event); // Convert to JSON
             log.info("Publishing order created event: {}", event.getOrderNumber());
             kafkaTemplate.send(ORDER_CREATED_TOPIC, event.getOrderNumber(), event);
             log.info("Order created event published successfully: {}", event.getOrderNumber());
         } catch (Exception e) {
             log.warn("Direct Kafka publish failed, storing in outbox: {}", e.getMessage());
             storeInOutbox(event);
-            throw new RuntimeException("messaging failed", e);
+            // Don't throw exception - make messaging optional for order creation
+            log.info("Order event stored in outbox for later processing");
         }
     }
 

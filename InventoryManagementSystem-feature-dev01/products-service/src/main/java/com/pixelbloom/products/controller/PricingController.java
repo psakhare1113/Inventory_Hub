@@ -45,4 +45,14 @@ public class PricingController {
         return pricingService.updatePrice(pricing);
     }
 
+    @DeleteMapping("/pricing/{id}")
+    public Map<String, Object> deletePricing(@PathVariable Long id) {
+        try {
+            pricingService.deletePricing(id);
+            return Map.of("success", true, "message", "Pricing deleted successfully");
+        } catch (Exception e) {
+            return Map.of("success", false, "error", e.getMessage());
+        }
+    }
+
 }

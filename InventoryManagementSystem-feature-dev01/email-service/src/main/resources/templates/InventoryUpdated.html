@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Inventory Updated</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f4; font-family: Arial, sans-serif;">
+
+<table align="center" width="100%" cellpadding="0" cellspacing="0"
+       style="max-width:600px; background-color:#ffffff; margin:20px auto; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.05);">
+
+    <!-- Header -->
+    <tr>
+        <td style="background-color:#1a5276; padding:20px; text-align:center;">
+            <img src="cid:logo" alt="Logo" style="height:60px;">
+            <h1 style="color:#ffffff; margin:10px 0 0; font-size:20px;">Inventory Management System</h1>
+        </td>
+    </tr>
+
+    <!-- Alert Banner -->
+    <tr>
+        <td style="background-color:#d1fae5; padding:16px 30px; border-left:4px solid #16a34a;">
+            <p style="margin:0; font-size:16px; font-weight:bold; color:#166534;">
+                📦 Inventory Updated — Stock Added Successfully
+            </p>
+        </td>
+    </tr>
+
+    <!-- Body -->
+    <tr>
+        <td style="padding:30px; color:#333333;">
+            <p style="font-size:15px;">Dear <strong>Admin</strong>,</p>
+
+            <p style="font-size:14px; color:#555;">
+                The Receiving Clerk has completed putaway for the following item.
+                Inventory has been <strong style="color:#16a34a;">updated automatically</strong>.
+            </p>
+
+            <!-- Item Details Table -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background-color:#f8f9fa; border-radius:8px; padding:20px; margin:20px 0; border:1px solid #e0e0e0;">
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777; width:40%;">Product</td>
+                    <td style="padding:8px 0; font-size:14px; font-weight:bold; color:#1a5276;">${productName}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Product ID</td>
+                    <td style="padding:8px 0; font-size:14px; color:#333;">#${productId}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Units Added</td>
+                    <td style="padding:8px 0; font-size:14px; font-weight:bold; color:#16a34a;">+${qtyAdded} units</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">GRN Number</td>
+                    <td style="padding:8px 0; font-size:14px; color:#333;">${grnNumber}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Warehouse</td>
+                    <td style="padding:8px 0; font-size:14px; color:#333;">Warehouse #${warehouseId}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Condition</td>
+                    <td style="padding:8px 0;">
+                        <span style="background-color:#d1fae5; color:#166534; padding:3px 12px; border-radius:12px; font-size:12px; font-weight:bold;">
+                            ${condition}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Updated At</td>
+                    <td style="padding:8px 0; font-size:14px; color:#333;">${updatedAt}</td>
+                </tr>
+            </table>
+
+            <p style="font-size:13px; color:#888; margin-top:20px;">
+                This is an automated notification from the Warehouse Management System.
+                Please do not reply to this email.
+            </p>
+        </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+        <td style="background-color:#232F3E; padding:16px; text-align:center;">
+            <p style="margin:0; color:#aaa; font-size:12px;">
+                © 2026 PixelBloom Digital — Inventory Management System
+            </p>
+        </td>
+    </tr>
+
+</table>
+</body>
+</html>

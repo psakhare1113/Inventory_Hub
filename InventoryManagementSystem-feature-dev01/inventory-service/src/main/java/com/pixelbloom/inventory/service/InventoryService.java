@@ -9,10 +9,13 @@ import com.pixelbloom.inventory.requestEntity.PriceUpdateRequest;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 public interface InventoryService {
 
         // ===================== ADMIN APIs =====================
+        List<InventoryWithProductDetails> getAllInventoryWithProductDetails();
+        
         Inventory addInventory(Inventory inventory);
 
 
@@ -23,6 +26,9 @@ public interface InventoryService {
         void enableInventory(String barcode, Long adminId);
 
         Inventory updateInventoryStatus(String barcode, AdminInventoryUpdateRequest request);
+
+        // ===================== PRICING INTEGRATION =====================
+        Map<String, Object> getProductPricing(Long productId);
 
         // ===================== ORDER ORCHESTRATION =====================
         ReserveItemResponse reserveInventoryForOrder(InventoryReserveRequest request);

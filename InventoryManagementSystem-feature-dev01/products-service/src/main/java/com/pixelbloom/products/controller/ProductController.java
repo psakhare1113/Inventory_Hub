@@ -108,4 +108,74 @@ public class ProductController {
     public ResponseEntity<ProductRefundException> createProductRefundException(@RequestBody ProductRefundException exception) {
         return ResponseEntity.ok(refundExceptionRepository.save(exception));
     }
+
+    // ── Recommendations ──────────────────────────────────────────────────────
+
+    /**
+     * Related Products: same subcategory, ACTIVE status, excludes current product.
+     * GET /api/products/{productId}/related?subcategoryId=5&limit=8
+     */
+    @GetMapping("/{productId}/related")
+    public ResponseEntity<List<Product>> getRelatedProducts(
+            @PathVariable Long productId,
+            @RequestParam Long subcategoryId,
+            @RequestParam(defaultValue = "8") int limit) {
+        return ResponseEntity.ok(service.getRelatedProducts(productId, subcategoryId, limit));
+    }
+
+    /**
+     * Relevant Products: complementary products from subcategory map + product attribute tags.
+     * GET /api/products/{productId}/relevant?categoryId=2&subcategoryId=5&limit=8
+     */
+    @GetMapping("/{productId}/relevant")
+    public ResponseEntity<List<Product>> getRelevantProducts(
+            @PathVariable Long productId,
+            @RequestParam Long categoryId,
+            @RequestParam Long subcategoryId,
+            @RequestParam(defaultValue = "8") int limit) {
+        return ResponseEntity.ok(service.getRelevantProducts(productId, categoryId, subcategoryId, limit));
+    }
+
+    // ── Complementary Map CRUD (Admin) ────────────────────────────────────────
+
+    /**
+     * GET /api/products/complementary-map          → all mappings
+     * GET /api/products/complementary-map?subcategoryId=6 → mappings for subcategory 6
+     */
+    @GetMapping("/complementary-map")
+    public ResponseEntity<?> getComplementaryMappings(
+            @RequestParam(required = false) Long subcategoryId) {
+        if (subcategoryId != null) {
+            return ResponseEntity.ok(service.getComplementaryMappings(subcategoryId));
+        }
+        return ResponseEntity.ok(service.getAllComplementaryMappings());
+    }
+
+    /**
+     * POST /api/products/complementary-map
+     * Body: { "subcategoryId": 6, "complementarySubcategoryId": 7, "label": "Accessories" }
+     */
+    @PostMapping("/complementary-map")
+    public ResponseEntity<?> addComplementaryMapping(
+            @RequestBody com.pixelbloom.products.model.SubcategoryComplementaryMap request) {
+        try {
+            return ResponseEntity.ok(service.addComplementaryMapping(
+                    request.getSubcategoryId(),
+                    request.getComplementarySubcategoryId(),
+                    request.getLabel()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * DELETE /api/products/complementary-map?subcategoryId=6&complementarySubcategoryId=7
+     */
+    @DeleteMapping("/complementary-map")
+    public ResponseEntity<Void> removeComplementaryMapping(
+            @RequestParam Long subcategoryId,
+            @RequestParam Long complementarySubcategoryId) {
+        service.removeComplementaryMapping(subcategoryId, complementarySubcategoryId);
+        return ResponseEntity.noContent().build();
+    }
 }

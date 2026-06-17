@@ -265,6 +265,7 @@
   display: grid;
   grid-template-columns: 16px 1fr auto;
   align-items: center;
+  gap: 0 10px;
   padding: 14px 16px;
   border-radius: 14px;
   margin-bottom: 14px;
@@ -276,6 +277,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .admin .dot.yellow { background: #facc15; }
@@ -285,10 +287,17 @@
 
 .admin .label {
   margin-left: 10px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .admin .count {
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 16px;
+  color: #ffffff;
+  text-align: right;
+  min-width: 24px;
 }
 /* ===== TABLE CARDS ===== */
 .admin .table-card {
@@ -381,8 +390,6 @@
 
 /* Fix collaboration text visibility */
 .admin .collab-card .collab-header h3,
-.admin .collab-card .label,
-.admin .collab-card .count,
 .admin .collab-card .collab-total {
   color: #ffffff !important;
 }
@@ -447,6 +454,7 @@
 .admin .progress-fill.blue   { background: #60a5fa; }
 .admin .progress-fill.green  { background: #22c55e; }
 .admin .progress-fill.purple { background: #c084fc; }
+.admin .progress-fill.red    { background: #ef4444; }
 
 /* Table header with inline View All */
 .admin .table-header h3 {

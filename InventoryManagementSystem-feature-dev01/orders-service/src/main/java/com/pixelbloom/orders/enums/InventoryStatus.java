@@ -10,7 +10,15 @@ public enum InventoryStatus {
     DAMAGED,
     SCRAPPED,
     REMOVED,
-    RETURN_UNDER_INSPECTION;
+    RETURN_UNDER_INSPECTION,
+    RETURN_APPROVED,
+    INSPECTION_REQUESTED,
+    RETURN_REJECTED,
+    RETURN_REQUESTED,
+    REFUND_REQUESTED,
+    INSPECTION_APPROVED,
+    INSPECTION_REJECTED,
+    RETURN_INITIATED;
 
     public static InventoryStatus from(String value) {
         try {

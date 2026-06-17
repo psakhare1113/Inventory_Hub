@@ -25,6 +25,19 @@ public interface ProductAttributeRepository
             @Param("name") String name,
             @Param("value") String value
     );
+
+    /**
+     * Option B: find the 'complementarySubcategories' attribute for a product.
+     * Stored as: name="complementarySubcategories", value="7,8,12"
+     */
+    @Query("""
+        SELECT pa
+        FROM ProductAttribute pa
+        WHERE pa.productId = :productId
+          AND pa.name = 'complementarySubcategories'
+    """)
+    java.util.Optional<ProductAttribute> findComplementarySubcategoriesAttr(
+            @Param("productId") Long productId);
 }
 
 

@@ -1,5 +1,6 @@
 package com.pixelbloom.shipping.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,6 +29,8 @@ public class CustomerAddress {
     private String country;
     private String contactPhone;
 
+    @JsonProperty("isDefault")
+    @Column(name = "is_default")
     private boolean isDefault;
     private LocalDateTime createdAt;
 }

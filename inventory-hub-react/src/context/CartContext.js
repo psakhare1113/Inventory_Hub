@@ -1,28 +1,38 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { cartManager } from '../data';
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState(cartManager.getWithProducts());
+  const [cart, setCart] = useState([]);
 
-  const addToCart = (productId) => {
-    cartManager.add(productId);
-    setCart(cartManager.getWithProducts());
+  // Load cart with products on mount (async)
+  useEffect(() => {
+    cartManager.getWithProducts().then(setCart).catch(() => setCart([]));
+  }, []);
+
+  const refreshCart = async () => {
+    const updated = await cartManager.getWithProducts();
+    setCart(updated);
   };
 
-  const updateQuantity = (id, quantity) => {
+  const addToCart = async (productId) => {
+    cartManager.add(productId);
+    await refreshCart();
+  };
+
+  const updateQuantity = async (id, quantity) => {
     if (quantity < 1) {
-      removeFromCart(id);
+      await removeFromCart(id);
     } else {
       cartManager.update(id, quantity);
-      setCart(cartManager.getWithProducts());
+      await refreshCart();
     }
   };
 
-  const removeFromCart = (id) => {
+  const removeFromCart = async (id) => {
     cartManager.remove(id);
-    setCart(cartManager.getWithProducts());
+    await refreshCart();
   };
 
   const clearCart = () => {

@@ -22,4 +22,6 @@ public class OrderPhysicalVerificationRequest {
         private OrderStatus status;
         private String rejectionReason;
         private String inspectorRemarks;
+        private String itemCondition; // GOOD, FAIR, DAMAGED
+        private List<String> inspectionImages; // URLs of uploaded images
     }

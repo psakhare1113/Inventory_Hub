@@ -42,4 +42,10 @@ public class InventoryInspectionController {
         SuccessResponseDTO response = inspectionService.orderReturnInitiated(request);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/updateReturnInspection")
+    public ResponseEntity<SuccessResponseDTO> updateReturnInspectionDetails(@RequestBody orderInspectionRequest request) {
+        SuccessResponseDTO response = inspectionService.updateReturnInspectionDetails(request);
+        return ResponseEntity.ok(response);
+    }
 }

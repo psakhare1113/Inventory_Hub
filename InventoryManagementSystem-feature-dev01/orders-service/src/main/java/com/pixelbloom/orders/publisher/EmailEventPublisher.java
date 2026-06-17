@@ -29,7 +29,8 @@ public class EmailEventPublisher {
         } catch (Exception e) {
             log.warn("Direct Kafka publish failed, storing in outbox: {}", e.getMessage());
             storeInOutbox(event);
-            throw new RuntimeException("messaging failed", e); // Custom message
+            // Don't throw exception - make email optional for order creation
+            log.info("Email event stored in outbox for later processing");
         }
     }
 
@@ -49,8 +50,8 @@ public class EmailEventPublisher {
             outboxRepository.save(outbox);
             log.info("Email event stored in outbox for order: {}", event.getOrderNumber());
         } catch (Exception e) {
-            log.error("Failed to store email event in outbox: {}", e.getMessage());
-            throw new RuntimeException("Email event publishing failed completely", e);
+            // Outbox save failed — log and continue. Email is non-critical; order must not fail.
+            log.error("Failed to store email event in outbox (non-fatal): {}", e.getMessage());
         }
     }
 

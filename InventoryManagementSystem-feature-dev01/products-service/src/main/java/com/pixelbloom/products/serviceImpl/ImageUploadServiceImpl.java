@@ -29,4 +29,13 @@ public class ImageUploadServiceImpl implements ImageUploadService {
             throw new RuntimeException("Image upload failed: " + e.getMessage());
         }
     }
+
+    @Override
+    public String getCloudinaryConfig() {
+        try {
+            return cloudinary.config.cloudName;
+        } catch (Exception e) {
+            throw new RuntimeException("Cloudinary not configured: " + e.getMessage());
+        }
+    }
 }

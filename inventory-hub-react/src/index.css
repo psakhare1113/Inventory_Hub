@@ -7,6 +7,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Remove green line from top of page only */
+html, body, #root {
+  border-top: none !important;
+  outline: none !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
@@ -25,4 +33,14 @@ code {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Payment success ping animation */
+@keyframes ping-once {
+  0%   { transform: scale(1); opacity: 0.75; }
+  75%  { transform: scale(1.5); opacity: 0; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.animate-ping {
+  animation: ping-once 1s cubic-bezier(0, 0, 0.2, 1) forwards;
 }

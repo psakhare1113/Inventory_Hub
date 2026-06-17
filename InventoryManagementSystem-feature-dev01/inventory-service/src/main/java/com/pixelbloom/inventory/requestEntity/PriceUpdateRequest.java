@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 public class PriceUpdateRequest {
     private BigDecimal mrp;
     private BigDecimal showroomPrice;
+    private BigDecimal buyPrice;
     private BigDecimal sellingPrice;
     private Long updatedBy;
-
 }

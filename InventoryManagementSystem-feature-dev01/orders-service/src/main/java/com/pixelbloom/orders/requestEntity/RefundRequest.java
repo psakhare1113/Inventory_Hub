@@ -16,6 +16,8 @@ public class RefundRequest {
     private String barcode;  // get from UI
     private String refundReason;
     private String currency;
+    /** "CASH" or "ONLINE" — chosen by the customer at refund time */
+    private String refundMethod;
 }
 
 

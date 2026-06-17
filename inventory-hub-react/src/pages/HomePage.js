@@ -3,7 +3,10 @@ import { Hero } from '../components/Hero';
 import { Categories } from '../components/Categories';
 import { ProductCard } from '../components/ProductCard';
 import { Footer } from '../components/Footer';
+import RecommendationSection from '../components/RecommendationSection';
 import { filterProducts, getAllProducts } from '../data';
+import enhancedProductsService from '../services/enhancedProductsService';
+import { useVisitTracker } from '../hooks/useVisitTracker';
 
 const slides = [
   { img: '/images/ho.jpg', title: 'Modern Living' },
@@ -18,21 +21,81 @@ const galleryImages = [
   '/images/AbouUS2.jpg', '/images/Aboutus4.jpg', '/images/AboutUs1.jpg'
 ];
 
-export const HomePage = ({ compareProducts, onNavigate, onAddToCart, onToggleWishlist, onAddToCompare, onFilterByCategory }) => {
+export const HomePage = ({ compareProducts, wishlist, onNavigate, onAddToCart, onToggleWishlist, onAddToCompare, onFilterByCategory, isAuthenticated, onRequireAuth }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dataSource, setDataSource] = useState('unknown');
+  const { getCurrentUserId } = useVisitTracker();
 
   useEffect(() => {
     loadProducts();
   }, []);
 
+  const fetchAllPricing = async () => {
+    try {
+      const response = await fetch(
+        'http://localhost:9999/api/products/pricing',
+        { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+      );
+      if (response.ok) {
+        const list = await response.json();
+        return Array.isArray(list)
+          ? list.reduce((map, p) => { map[p.productId] = p; return map; }, {})
+          : {};
+      }
+    } catch (e) {}
+    return {};
+  };
+
   const loadProducts = async () => {
     try {
-      const products = await getAllProducts();
-      setAllProducts(products);
+      setLoading(true);
+      
+      const result = await enhancedProductsService.fetchAllProducts();
+      
+      if (result.success) {
+        const pricingMap = await fetchAllPricing();
+
+        // Fetch attributes for all products in parallel (for isBestseller / freeShipping)
+        const attrResults = await Promise.allSettled(
+          result.data.map(p =>
+            fetch(`http://localhost:9999/api/product-attributes/product/${p.productId}`)
+              .then(r => r.ok ? r.json() : [])
+              .catch(() => [])
+          )
+        );
+
+        const transformedProducts = result.data.map((product, idx) => {
+          const p = pricingMap[product.productId] || {};
+          const attrs = attrResults[idx].status === 'fulfilled' ? (attrResults[idx].value || []) : [];
+          const isBestseller = attrs.find(a => a.attributeName === 'isBestseller')?.attributeValue === 'true';
+          const freeShipping = attrs.find(a => a.attributeName === 'freeShipping')?.attributeValue === 'true';
+          return {
+            id: product.productId,
+            name: product.name || product.productBarcode,
+            price: parseFloat(p.sellingPrice) || product.price || 0,
+            originalPrice: parseFloat(p.mrp) || 0,
+            discount: p.discount != null ? parseFloat(p.discount) : null,
+            imageUrl: product.productUrl || '/placeholder.jpg',
+            categoryId: product.categoryId,
+            subcategoryId: product.subcategoryId,
+            status: product.status,
+            rating: product.rating || 0,
+            isBestseller,
+            freeShipping,
+          };
+        });
+        
+        setAllProducts(transformedProducts);
+        setDataSource(result.source);
+      } else {
+        setAllProducts([]);
+      }
+      
     } catch (error) {
-      console.error('Error loading products:', error);
+      console.error('❌ HomePage: Exception during load:', error);
+      setAllProducts([]);
     } finally {
       setLoading(false);
     }
@@ -46,7 +109,9 @@ export const HomePage = ({ compareProducts, onNavigate, onAddToCart, onToggleWis
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
-  const bestsellers = allProducts.slice(0, 4); // Show first 4 products as bestsellers
+  // Show products marked as bestseller; fallback to first 4 if none tagged yet
+  const bestsellers = allProducts.filter(p => p.isBestseller).slice(0, 8);
+  const displayBestsellers = bestsellers.length > 0 ? bestsellers : allProducts.slice(0, 4);
 
   return (
     <>
@@ -64,11 +129,12 @@ export const HomePage = ({ compareProducts, onNavigate, onAddToCart, onToggleWis
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {loading ? (
             <div className="col-span-4 text-center py-12">Loading products...</div>
-          ) : bestsellers.length > 0 ? (
-            bestsellers.map(p => (
+          ) : displayBestsellers.length > 0 ? (
+            displayBestsellers.map(p => (
               <ProductCard 
                 key={p.id}
                 product={p}
+                wishlist={wishlist}
                 compareProducts={compareProducts}
                 onNavigate={onNavigate}
                 onAddToCart={onAddToCart}
@@ -77,7 +143,15 @@ export const HomePage = ({ compareProducts, onNavigate, onAddToCart, onToggleWis
               />
             ))
           ) : (
-            <div className="col-span-4 text-center py-12 text-muted">No bestsellers available</div>
+            <div className="col-span-4 text-center py-12">
+              <div className="text-muted mb-4">No bestsellers available</div>
+              <button 
+                onClick={loadProducts}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                🔄 Retry Loading
+              </button>
+            </div>
           )}
         </div>
       </section>
@@ -182,6 +256,48 @@ export const HomePage = ({ compareProducts, onNavigate, onAddToCart, onToggleWis
           </div>
         </div>
       </section>
+
+      {/* ── Amazon-style: Personalized Recommendations / Sign-in CTA ── */}
+      {!isAuthenticated ? (
+        /* Guest: "See personalized recommendations" banner */
+        <section className="py-16 bg-gradient-to-br from-amber-50 to-orange-50 border-t border-amber-100">
+          <div className="max-w-2xl mx-auto px-4 text-center">
+            <div className="mb-4 text-5xl">🛍️</div>
+            <h2 className="text-2xl md:text-3xl font-serif font-semibold text-gray-800 mb-3">
+              See personalized recommendations
+            </h2>
+            <p className="text-gray-500 text-sm mb-6">
+              Sign in to discover products tailored to your taste, track your orders, and save your favourites.
+            </p>
+            <button
+              onClick={() => onRequireAuth && onRequireAuth({ message: 'Sign in to see your personalized recommendations.' })}
+              className="inline-flex items-center gap-2 bg-amber-400 hover:bg-amber-500 text-gray-900 font-semibold px-8 py-3 rounded-full shadow-md hover:shadow-lg transition-all text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Sign in
+            </button>
+            <p className="mt-3 text-xs text-gray-400">
+              New customer?{' '}
+              <button
+                onClick={() => onRequireAuth && onRequireAuth({ message: 'Create an account to get started.' })}
+                className="text-primary font-semibold hover:underline"
+              >
+                Start here
+              </button>
+            </p>
+          </div>
+        </section>
+      ) : (
+        /* Logged-in: personalized "Recommended for You" strip */
+        <RecommendationSection
+          userId={getCurrentUserId()}
+          currentProduct={null}
+          onNavigateToProduct={onNavigate}
+          onAddToCart={onAddToCart}
+        />
+      )}
 
       <Footer onNavigate={onNavigate} onFilterByCategory={onFilterByCategory} />
     </>

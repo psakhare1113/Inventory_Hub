@@ -1,0 +1,105 @@
+version: '3.8'
+
+# ============================================================
+# ELK Stack - Centralized Logging for Inventory Hub
+# Elasticsearch + Logstash + Kibana + Filebeat
+# ============================================================
+# Start: docker-compose -f docker-compose-elk.yml up -d
+# Stop:  docker-compose -f docker-compose-elk.yml down
+# Kibana: http://localhost:5601
+# ============================================================
+
+services:
+
+  # ── Elasticsearch: Log Storage ──────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: inventory-elasticsearch
+    environment:
+      - node.name=inventory-es
+      - cluster.name=inventory-hub-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false          # dev mode - no auth needed
+      - xpack.security.http.ssl.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - elk-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Logstash: Log Processing Pipeline ───────────────────
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.12.0
+    container_name: inventory-logstash
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+    ports:
+      - "5044:5044"   # Beats input (Filebeat → Logstash)
+      - "5000:5000"   # TCP input (direct log shipping)
+      - "9600:9600"   # Logstash monitoring API
+    environment:
+      - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
+    networks:
+      - elk-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Kibana: Log Visualization Dashboard ─────────────────
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: inventory-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - KIBANA_SYSTEM_PASSWORD=kibana123
+    networks:
+      - elk-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Filebeat: Log Collector (reads log files) ────────────
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.12.0
+    container_name: inventory-filebeat
+    user: root
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - filebeat-data:/usr/share/filebeat/data
+      # Mount the logs directory from host where Spring Boot writes logs
+      - ../logs:/var/log/inventory-hub:ro
+    networks:
+      - elk-network
+    depends_on:
+      - logstash
+    command: filebeat -e -strict.perms=false
+    restart: unless-stopped
+
+networks:
+  elk-network:
+    driver: bridge
+
+volumes:
+  elasticsearch-data:
+    driver: local
+  filebeat-data:
+    driver: local

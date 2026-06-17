@@ -1,17 +1,24 @@
-.admin .sidebar-inventory-text,
-.admin .sidebar-active-item,
-.admin .sidebar-active-icon,
-.admin .sidebar-active-arrow {
+/* Sidebar Styles */
+
+.admin .sidebar-inventory-text {
   color: #b88e2f;
   transition: all 0.3s ease;
 }
 
 .admin .sidebar-active-item {
   background-color: #fef3e2;
+  color: #b88e2f;
+  transition: all 0.3s ease;
+}
+
+.admin .sidebar-active-icon {
+  color: #b88e2f;
+  transition: all 0.3s ease;
 }
 
 .admin .sidebar-active-arrow {
   color: #b88e2f;
+  transition: all 0.3s ease;
 }
 
 .admin .sidebar-collapsed {
@@ -30,4 +37,12 @@
 .admin .search-input:focus {
   border-color: #b88e2f !important;
   box-shadow: 0 0 0 1px #b88e2f;
+}
+
+/* Mobile responsive */
+@media (max-width: 1024px) {
+  .admin .sidebar-collapsed {
+    width: 0 !important;
+    transform: translateX(-100%);
+  }
 }

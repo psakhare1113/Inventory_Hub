@@ -20,6 +20,8 @@ public class RefundResponse {
         private RefundStatus refundStatus;
         private BigDecimal totalRefundAmount;
         private String currency;
+        /** "CASH" or "ONLINE" */
+        private String refundMethod;
         private LocalDateTime refundedAt;
         private String rejectionReason;
     }

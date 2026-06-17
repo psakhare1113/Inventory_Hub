@@ -9,7 +9,7 @@ public class ProductCreateRequest {
     private String description;
     private Long categoryId;
     private Long subcategoryId;
-    private ProductStatus status;
+    private ProductStatus status = ProductStatus.ACTIVE; // Default to ACTIVE
     private String productUrl;
     private boolean eligibleForReturn = true;
 }

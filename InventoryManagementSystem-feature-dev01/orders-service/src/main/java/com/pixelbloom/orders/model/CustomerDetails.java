@@ -19,6 +19,8 @@ public class CustomerDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long customerId;
 
+    // customer_id is the PK — same as auth-service userId
+
     private String firstName;
     private String lastName;
     private String email;
@@ -38,7 +40,8 @@ public class CustomerDetails {
     private String country;
     private String phone;
 
-    private boolean isDefault;
+    @Column(name = "is_default")
+    private Boolean isDefault = false;
 
 }
 

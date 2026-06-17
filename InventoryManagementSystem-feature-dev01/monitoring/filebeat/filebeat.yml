@@ -1,0 +1,130 @@
+# ============================================================
+# Filebeat Configuration - Inventory Hub
+# Collects logs from all microservices → sends to Logstash
+# ============================================================
+
+filebeat.inputs:
+
+  # ── API Gateway Logs ───────────────────────────────────────
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/inventory-hub/api-gateway/*.log
+    fields:
+      service: api-gateway
+      environment: development
+    fields_under_root: true
+    multiline.pattern: '^\{'
+    multiline.negate: true
+    multiline.match: after
+
+  # ── Warehouse Service Logs ─────────────────────────────────
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/inventory-hub/warehouse-service/*.log
+    fields:
+      service: warehouse-service
+      environment: development
+    fields_under_root: true
+    multiline.pattern: '^\{'
+    multiline.negate: true
+    multiline.match: after
+
+  # ── Orders Service Logs ────────────────────────────────────
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/inventory-hub/orders-service/*.log
+    fields:
+      service: orders-service
+      environment: development
+    fields_under_root: true
+    multiline.pattern: '^\{'
+    multiline.negate: true
+    multiline.match: after
+
+  # ── Products Service Logs ──────────────────────────────────
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/inventory-hub/products-service/*.log
+    fields:
+      service: products-service
+      environment: development
+    fields_under_root: true
+    multiline.pattern: '^\{'
+    multiline.negate: true
+    multiline.match: after
+
+  # ── Auth Server Logs ───────────────────────────────────────
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/inventory-hub/auth-server/*.log
+    fields:
+      service: auth-server
+      environment: development
+    fields_under_root: true
+    multiline.pattern: '^\{'
+    multiline.negate: true
+    multiline.match: after
+
+  # ── Inventory Service Logs ─────────────────────────────────
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/inventory-hub/inventory-service/*.log
+    fields:
+      service: inventory-service
+      environment: development
+    fields_under_root: true
+    multiline.pattern: '^\{'
+    multiline.negate: true
+    multiline.match: after
+
+  # ── Payment Service Logs ───────────────────────────────────
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/inventory-hub/payment-service/*.log
+    fields:
+      service: payment-service
+      environment: development
+    fields_under_root: true
+    multiline.pattern: '^\{'
+    multiline.negate: true
+    multiline.match: after
+
+  # ── Shipping Service Logs ──────────────────────────────────
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/inventory-hub/shipping-service/*.log
+    fields:
+      service: shipping-service
+      environment: development
+    fields_under_root: true
+    multiline.pattern: '^\{'
+    multiline.negate: true
+    multiline.match: after
+
+# ── Output: Send to Logstash ───────────────────────────────
+output.logstash:
+  hosts: ["logstash:5044"]
+  bulk_max_size: 2048
+
+# ── Logging ───────────────────────────────────────────────
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+
+# ── Processors ────────────────────────────────────────────
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~

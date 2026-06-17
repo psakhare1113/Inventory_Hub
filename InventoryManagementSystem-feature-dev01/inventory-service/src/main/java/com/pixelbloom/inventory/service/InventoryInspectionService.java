@@ -12,4 +12,6 @@ public interface InventoryInspectionService {
     InspectionResponse getInspection(InspectionRequestDto inspectionRequest);
 
     SuccessResponseDTO orderReturnInitiated(orderInspectionRequest request);
+
+    SuccessResponseDTO updateReturnInspectionDetails(orderInspectionRequest request);
 }

@@ -1,18 +1,79 @@
 import React, { useState, useEffect } from 'react';
 import { ProductCard } from '../components/ProductCard';
-import { formatPrice, getAllProducts } from '../data';
+
+import enhancedProductsService from '../services/enhancedProductsService';
+import OrderHistory from '../components/OrderHistory/OrderHistory';
+
+const fetchAllPricing = async () => {
+  try {
+    const response = await fetch('http://localhost:9999/api/products/pricing', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (response.ok) {
+      const list = await response.json();
+      return Array.isArray(list)
+        ? list.reduce((map, p) => { map[p.productId] = p; return map; }, {})
+        : {};
+    }
+  } catch (e) {}
+  return {};
+};
 
 export const ProfilePage = ({ wishlist, orderHistory, profileTab, setProfileTab, compareProducts, onNavigate, onAddToCart, onToggleWishlist, onAddToCompare, onSignOut }) => {
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Read real user info from localStorage
+  const firstName = localStorage.getItem('firstName') || '';
+  const lastName = localStorage.getItem('lastName') || '';
+  const email = localStorage.getItem('email') || localStorage.getItem('username') || 'user@example.com';
+  const customerId = localStorage.getItem('customerId');
+  const displayName = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : 'My Account';
+  const initials = (firstName && lastName)
+    ? `${firstName[0]}${lastName[0]}`.toUpperCase()
+    : (firstName ? firstName[0].toUpperCase() : 'U');
+
+  const avatarColors = [
+    'bg-gradient-to-br from-blue-500 to-blue-600',
+    'bg-gradient-to-br from-emerald-500 to-emerald-600',
+    'bg-gradient-to-br from-purple-500 to-purple-600',
+    'bg-gradient-to-br from-rose-500 to-rose-600',
+    'bg-gradient-to-br from-amber-500 to-amber-600',
+    'bg-gradient-to-br from-cyan-500 to-cyan-600',
+  ];
+  const avatarColor = avatarColors[(parseInt(customerId, 10) || 0) % avatarColors.length];
+
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const products = await getAllProducts();
-        setAllProducts(products);
+        const [result, pricingMap] = await Promise.all([
+          enhancedProductsService.fetchAllProducts(),
+          fetchAllPricing(),
+        ]);
+        if (result.success && result.data.length > 0) {
+          const mapped = result.data.map(product => {
+            const p = pricingMap[product.productId] || {};
+            return {
+              id: product.productId,
+              name: product.name || product.productBarcode,
+              price: parseFloat(p.sellingPrice) || product.price || 0,
+              originalPrice: parseFloat(p.mrp) || 0,
+              discount: p.discount != null ? parseFloat(p.discount) : null,
+              unitSize: p.unitSize || '',
+              unitLabel: p.unitLabel || '',
+              imageUrl: product.productUrl || '/placeholder.jpg',
+              categoryId: product.categoryId,
+              subcategoryId: product.subcategoryId,
+              status: product.status,
+              description: product.description || '',
+              rating: product.rating || 0,
+            };
+          });
+          setAllProducts(mapped);
+        }
       } catch (error) {
-        console.error('Error loading products:', error);
+        console.error('Error loading products for wishlist:', error);
       } finally {
         setLoading(false);
       }
@@ -20,7 +81,7 @@ export const ProfilePage = ({ wishlist, orderHistory, profileTab, setProfileTab,
     loadProducts();
   }, []);
 
-  const wishlistProducts = allProducts.filter(p => wishlist.includes(p.id));
+  const wishlistProducts = allProducts.filter(p => wishlist.map(id => Number(id)).includes(Number(p.id)));
   const [reviewingItem, setReviewingItem] = useState(null);
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
@@ -38,12 +99,12 @@ export const ProfilePage = ({ wishlist, orderHistory, profileTab, setProfileTab,
         <aside className="w-full md:w-64 shrink-0">
           <div className="bg-secondary/30 rounded-2xl p-6 border border-border sticky top-28">
             <div className="flex items-center gap-4 mb-8">
-              <div className="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold">
-                U
+              <div className={`h-12 w-12 rounded-full ${avatarColor} text-white flex items-center justify-center text-xl font-bold`}>
+                {initials}
               </div>
               <div className="flex flex-col">
-                <span className="font-semibold text-foreground">My Account</span>
-                <span className="text-xs text-muted">user@example.com</span>
+                <span className="font-semibold text-foreground">{displayName}</span>
+                <span className="text-xs text-muted">{email}</span>
               </div>
             </div>
 
@@ -85,117 +146,7 @@ export const ProfilePage = ({ wishlist, orderHistory, profileTab, setProfileTab,
         <div className="flex-1 min-h-[500px]">
           {profileTab === 'orders' && (
             <div>
-              <h2 className="text-3xl font-serif mb-6">Order History</h2>
-              
-              {orderHistory && orderHistory.length > 0 ? (
-                <div className="space-y-6">
-                  {orderHistory.map(order => (
-                    <div key={order.id} className="border border-border rounded-xl p-6 bg-card shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex flex-wrap justify-between items-center gap-4 mb-4 pb-4 border-b border-border/50">
-                        <div>
-                          <p className="text-sm text-muted mb-1">Order Number</p>
-                          <p className="font-semibold">#{order.id}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted mb-1">Date Placed</p>
-                          <p className="font-medium">{order.date}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted mb-1">Total Amount</p>
-                          <p className="font-medium">{formatPrice(order.total)}</p>
-                        </div>
-                        <div>
-                          <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full uppercase tracking-wider bg-amber-100 text-amber-700">
-                            {order.status}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="space-y-2 mb-4">
-                        <p className="text-sm font-medium">Items:</p>
-                        {order.items.map(item => (
-                          <div key={item.id} className="border-b border-border/30 pb-3 mb-3 last:border-0">
-                            <div className="flex items-center gap-3 text-sm mb-2">
-                              <img src={item.product.imageUrl} alt={item.product.name} className="w-12 h-12 object-cover rounded" />
-                              <span className="flex-1">{item.product.name}</span>
-                              <span className="text-muted">Qty: {item.quantity}</span>
-                              <span className="font-medium">{formatPrice(item.product.price * item.quantity)}</span>
-                            </div>
-                            <div className="flex gap-2 ml-15">
-                              <button className="px-3 py-1.5 text-xs bg-amber-50 border border-amber-200 text-amber-700 rounded hover:bg-amber-100 transition-colors">
-                                ↻ Buy Again
-                              </button>
-                              {reviewingItem === `${order.id}-${item.id}` ? (
-                                <div className="flex-1 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                  <div className="flex gap-1 mb-2">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                      <span
-                                        key={star}
-                                        className={`cursor-pointer text-xl ${rating >= star ? 'text-amber-400' : 'text-gray-300'}`}
-                                        onClick={() => setRating(star)}
-                                      >
-                                        ★
-                                      </span>
-                                    ))}
-                                  </div>
-                                  <textarea
-                                    className="w-full p-2 text-sm border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
-                                    placeholder="Share your experience..."
-                                    value={reviewText}
-                                    onChange={(e) => setReviewText(e.target.value)}
-                                    rows={3}
-                                  />
-                                  <div className="flex gap-2 mt-2">
-                                    <button 
-                                      className="px-3 py-1.5 text-xs bg-primary text-white rounded hover:bg-primary/90 transition-colors"
-                                      onClick={() => handleSubmitReview(order.id, item.id)}
-                                    >
-                                      Submit
-                                    </button>
-                                    <button 
-                                      className="px-3 py-1.5 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-                                      onClick={() => {
-                                        setReviewingItem(null);
-                                        setRating(0);
-                                        setReviewText('');
-                                      }}
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <button 
-                                  className="px-3 py-1.5 text-xs bg-white border border-primary text-primary rounded hover:bg-blue-50 transition-colors"
-                                  onClick={() => setReviewingItem(`${order.id}-${item.id}`)}
-                                >
-                                  ✍️ Write Review
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex justify-end">
-                        <button className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors">
-                          View Invoice
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-20 bg-secondary/20 rounded-2xl border border-dashed border-border">
-                  <svg className="w-16 h-16 text-muted mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                  <h3 className="text-xl font-serif mb-2">No orders yet</h3>
-                  <p className="text-muted mb-6">When you place an order, it will appear here.</p>
-                  <button onClick={() => onNavigate('shop')} className="px-6 py-3 bg-primary text-white rounded-lg font-medium">Start Shopping</button>
-                </div>
-              )}
+              <OrderHistory />
             </div>
           )}
 
@@ -203,12 +154,15 @@ export const ProfilePage = ({ wishlist, orderHistory, profileTab, setProfileTab,
             <div>
             <h2 className="text-3xl font-serif mb-6">Saved Wishlist</h2>
             
-            {wishlistProducts.length > 0 ? (
+            {loading ? (
+              <div className="text-center py-20 text-muted">Loading wishlist...</div>
+            ) : wishlistProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-10">
                 {wishlistProducts.map(p => (
                   <ProductCard 
                     key={p.id}
                     product={p}
+                    wishlist={wishlist}
                     compareProducts={compareProducts}
                     onNavigate={onNavigate}
                     onAddToCart={onAddToCart}

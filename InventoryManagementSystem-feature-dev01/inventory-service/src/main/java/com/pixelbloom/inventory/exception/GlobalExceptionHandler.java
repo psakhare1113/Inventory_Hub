@@ -139,14 +139,14 @@ public class GlobalExceptionHandler {
             throw ex;
         }
 
-        // Log only application errors
-        log.error("Unexpected error at path: {}", path, ex);
+        // Log the actual error with full stack trace
+        log.error("Unexpected error at path: {} - Error: {} - Message: {}", path, ex.getClass().getSimpleName(), ex.getMessage(), ex);
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .errorCode("INTERNAL_SERVER_ERROR")
                 .error("SYSTEM_ERROR")
-                .message("Something went wrong. Please contact support.")
+                .message("Error: " + ex.getClass().getSimpleName() + " - " + ex.getMessage()) // Show actual error for debugging
                 .timestamp(LocalDateTime.now())
                 .path(path)
                 .build();

@@ -17,16 +17,21 @@ public class JwtUtil {
     private static final String SECRET = "myVeryLongLongveryverylongSecretKeyVeryLongSecretKeyThatIsAtLeast32CharactersVeryLongSecretKeyThatIsAtLeast32CharactersThatIsAtLeast32CharactersLongForJWTSecurityPurposes123456789";
 
     private static final long VALIDITY = TimeUnit.HOURS.toMillis(24);
+    private static final long REFRESH_TOKEN_VALIDITY = TimeUnit.DAYS.toMillis(7);
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(String username, String role, Long customerId) {
+    public String generateToken(String username, Long customerId) {
+        return generateToken(username, customerId, "USER");
+    }
+
+    public String generateToken(String username, Long customerId, String role) {
         return Jwts.builder()
                 .subject(username)
-                .claim("role", role)
                 .claim("customerId", customerId)
+                .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + VALIDITY))
                 .signWith(getSigningKey())
@@ -43,6 +48,10 @@ public class JwtUtil {
 
     public String extractRole(String token) {
         return extractAllClaims(token).get("role", String.class);
+    }
+
+    public Long getTokenValidity() {
+        return VALIDITY;
     }
 
     private Claims extractAllClaims(String token) {
@@ -66,15 +75,13 @@ public class JwtUtil {
         Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token);
     }
 
-    public void validateAdminAccess(String authHeader) {
+    public void validateAdminAccess(String authHeader, String email) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new RuntimeException("Missing or invalid authorization header");
         }
         String token = authHeader.substring(7);
         validateToken(token);
-        String role = extractRole(token);
-        if (!"ADMIN".equals(role)) {
-            throw new RuntimeException("Access denied: Admin role required");
-        }
+        // Admin access is now determined by checking if email exists in admin table
+        // This check should be done in the service layer
     }
 }

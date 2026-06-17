@@ -22,6 +22,7 @@ export const transformProduct = (backendProduct, attributes = [], pricing = null
     originalPrice: pricing?.mrp || null,
     imageUrl: backendProduct.productUrl || 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600',
     isBestseller: attributes.find(a => a.attributeName === 'isBestseller')?.attributeValue === 'true',
+    freeShipping: attributes.find(a => a.attributeName === 'freeShipping')?.attributeValue === 'true',
     features: attributes, // Pass attributes directly from backend
     status: backendProduct.status,
     rating: backendProduct.rating || 0,
@@ -33,6 +34,20 @@ export const transformProduct = (backendProduct, attributes = [], pricing = null
 let cachedProducts = null;
 let cachedPricing = null;
 let cachedAttributes = {};
+
+// Clear product/pricing cache so next fetch gets fresh data from backend
+export const clearProductCache = () => {
+  cachedProducts = null;
+  cachedPricing = null;
+};
+
+// Auto-clear cache whenever pricing is updated or deleted
+if (typeof window !== 'undefined') {
+  window.addEventListener('pricingUpdated', () => {
+    cachedProducts = null;
+    cachedPricing = null;
+  });
+}
 
 export const fetchBackendProducts = async () => {
   try {
@@ -94,73 +109,80 @@ export const getProductById = async (productId) => {
   }
 };
 
-// LocalStorage management
-const CART_KEY = 'inventory_cart';
-const WISHLIST_KEY = 'inventory_wishlist';
+// LocalStorage management — per-customer keys so each user has their own cart/wishlist
+const getCustomerId = () => localStorage.getItem('customerId') || 'guest';
+const CART_KEY = () => `inventory_cart_${getCustomerId()}`;
+const WISHLIST_KEY = () => `inventory_wishlist_${getCustomerId()}`;
 
 export const cartManager = {
-  get: () => JSON.parse(localStorage.getItem(CART_KEY) || '[]'),
+  get: () => JSON.parse(localStorage.getItem(CART_KEY()) || '[]'),
   add: (productId, quantity = 1) => {
+    const id = Number(productId);
     const cart = cartManager.get();
-    const existing = cart.find(item => item.productId === productId);
+    const existing = cart.find(item => Number(item.productId) === id);
     if (existing) {
       existing.quantity += quantity;
     } else {
-      cart.push({ id: Date.now(), productId, quantity });
+      cart.push({ id: Date.now(), productId: id, quantity });
     }
-    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    localStorage.setItem(CART_KEY(), JSON.stringify(cart));
     return cart;
   },
   update: (id, quantity) => {
     const cart = cartManager.get();
     const item = cart.find(item => item.id === id);
     if (item) item.quantity = quantity;
-    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    localStorage.setItem(CART_KEY(), JSON.stringify(cart));
     return cart;
   },
   remove: (id) => {
     const cart = cartManager.get().filter(item => item.id !== id);
-    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    localStorage.setItem(CART_KEY(), JSON.stringify(cart));
     return cart;
   },
   clear: () => {
-    localStorage.setItem(CART_KEY, '[]');
+    localStorage.setItem(CART_KEY(), '[]');
     return [];
   },
   getWithProducts: async () => {
     const cart = cartManager.get();
+    if (cart.length === 0) return [];
     const allProducts = await getAllProducts();
-    return cart.map(item => ({
-      ...item,
-      product: allProducts.find(p => p.id === item.productId)
-    })).filter(item => item.product); // Filter out items where product wasn't found
+    return cart.map(item => {
+      const product = allProducts.find(p => Number(p.id) === Number(item.productId));
+      console.log(`Cart item productId=${item.productId} mapped to product:`, product?.name);
+      return { ...item, product };
+    }).filter(item => item.product);
   }
 };
 
 export const wishlistManager = {
-  get: () => JSON.parse(localStorage.getItem(WISHLIST_KEY) || '[]'),
+  get: () => JSON.parse(localStorage.getItem(WISHLIST_KEY()) || '[]').map(Number),
   add: (productId) => {
+    const id = Number(productId);
     const wishlist = wishlistManager.get();
-    if (!wishlist.includes(productId)) {
-      wishlist.push(productId);
+    if (!wishlist.includes(id)) {
+      wishlist.push(id);
     }
-    localStorage.setItem(WISHLIST_KEY, JSON.stringify(wishlist));
+    localStorage.setItem(WISHLIST_KEY(), JSON.stringify(wishlist));
     return wishlist;
   },
   remove: (productId) => {
-    const wishlist = wishlistManager.get().filter(id => id !== productId);
-    localStorage.setItem(WISHLIST_KEY, JSON.stringify(wishlist));
+    const id = Number(productId);
+    const wishlist = wishlistManager.get().filter(wid => wid !== id);
+    localStorage.setItem(WISHLIST_KEY(), JSON.stringify(wishlist));
     return wishlist;
   },
   toggle: (productId) => {
+    const id = Number(productId);
     const wishlist = wishlistManager.get();
-    if (wishlist.includes(productId)) {
-      return wishlistManager.remove(productId);
+    if (wishlist.includes(id)) {
+      return wishlistManager.remove(id);
     } else {
-      return wishlistManager.add(productId);
+      return wishlistManager.add(id);
     }
   },
-  has: (productId) => wishlistManager.get().includes(productId)
+  has: (productId) => wishlistManager.get().includes(Number(productId))
 };
 
 export const filterProducts = (filters = {}, allProducts = []) => {
@@ -184,4 +206,8 @@ export const filterProducts = (filters = {}, allProducts = []) => {
 export const getProduct = async (id) => {
   return await getProductById(id);
 };
-export const formatPrice = (price) => `₹${price.toFixed(2)}`;
+export const formatPrice = (price) => {
+  const num = parseFloat(price);
+  if (isNaN(num)) return '₹0.00';
+  return `₹${num.toFixed(2)}`;
+};

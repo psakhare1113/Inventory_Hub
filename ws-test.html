@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WebSocket Notification Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+
+    h1 { font-size: 22px; font-weight: 700; color: #f8fafc; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 24px; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 12px; padding: 20px;
+    }
+    .card h2 { font-size: 14px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+
+    /* Status */
+    .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #ef4444; flex-shrink: 0; }
+    .dot.connected { background: #22c55e; box-shadow: 0 0 8px #22c55e88; }
+    .status-text { font-size: 13px; font-weight: 600; }
+
+    /* Role selector */
+    label { font-size: 12px; color: #94a3b8; display: block; margin-bottom: 6px; }
+    select, input[type=text] {
+      width: 100%; padding: 8px 12px; border-radius: 8px;
+      background: #0f172a; border: 1px solid #334155;
+      color: #e2e8f0; font-size: 13px; margin-bottom: 12px;
+      outline: none;
+    }
+    select:focus, input:focus { border-color: #6366f1; }
+
+    /* Buttons */
+    .btn {
+      padding: 9px 16px; border-radius: 8px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-connect  { background: #22c55e; color: #fff; width: 100%; margin-bottom: 8px; }
+    .btn-disconnect { background: #ef4444; color: #fff; width: 100%; margin-bottom: 16px; }
+    .btn-send { background: #6366f1; color: #fff; width: 100%; }
+    .btn-clear { background: #334155; color: #94a3b8; font-size: 11px; padding: 5px 10px; float: right; }
+
+    /* Notification type buttons */
+    .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .btn-type {
+      padding: 7px 8px; border-radius: 6px; border: 1px solid #334155;
+      background: #0f172a; color: #94a3b8; font-size: 11px; font-weight: 600;
+      cursor: pointer; text-align: center; transition: all 0.15s;
+    }
+    .btn-type:hover, .btn-type.active { background: #6366f1; color: #fff; border-color: #6366f1; }
+
+    /* Log */
+    .log {
+      background: #0f172a; border: 1px solid #1e293b;
+      border-radius: 8px; padding: 12px;
+      height: 280px; overflow-y: auto;
+      font-size: 12px; font-family: 'Courier New', monospace;
+    }
+    .log-entry { padding: 5px 0; border-bottom: 1px solid #1e293b11; line-height: 1.5; }
+    .log-entry:last-child { border-bottom: none; }
+    .log-time { color: #475569; margin-right: 8px; }
+    .log-recv { color: #22c55e; }
+    .log-send { color: #6366f1; }
+    .log-info { color: #f59e0b; }
+    .log-err  { color: #ef4444; }
+
+    /* Notification toast */
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+    .toast {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 10px; padding: 14px 16px;
+      min-width: 280px; max-width: 340px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast-title { font-size: 13px; font-weight: 700; color: #f8fafc; margin-bottom: 4px; }
+    .toast-msg { font-size: 12px; color: #94a3b8; }
+    .toast-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; display: inline-block; margin-top: 6px; }
+
+    .full-card { grid-column: 1 / -1; }
+    .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-right: 4px; }
+    .tag-admin { background: #1d4ed8; color: #bfdbfe; }
+    .tag-warehouse { background: #065f46; color: #a7f3d0; }
+    .tag-all { background: #7c3aed; color: #ddd6fe; }
+  </style>
+</head>
+<body>
+
+<h1>🔔 WebSocket Notification Tester</h1>
+<p class="subtitle">Open Admin/User in Chrome · Open Warehouse Staff in Edge · Test cross-browser notifications</p>
+
+<div id="toast-container"></div>
+
+<div class="grid">
+
+  <!-- LEFT: Connect Panel -->
+  <div class="card">
+    <h2>Connection</h2>
+
+    <div class="status-row">
+      <div class="dot" id="dot"></div>
+      <span class="status-text" id="status-text">Disconnected</span>
+    </div>
+
+    <label>WebSocket Server URL</label>
+    <input type="text" id="ws-url" value="http://localhost:8088/ws" />
+
+    <label>Who are you? (Role)</label>
+    <select id="role">
+      <option value="admin">👑 Admin</option>
+      <option value="warehouse">🏭 Warehouse Staff</option>
+      <option value="user">🛒 Customer/User</option>
+    </select>
+
+    <label>Subscribe Topic (which topic to listen on)</label>
+    <select id="topic">
+      <option value="/topic/admin/notifications">📢 /topic/admin/notifications</option>
+      <option value="/topic/warehouse/all">🏭 /topic/warehouse/all</option>
+      <option value="/topic/warehouse/manager/1">👔 /topic/warehouse/manager/1</option>
+      <option value="/topic/warehouse/picker/1">🛒 /topic/warehouse/picker/1</option>
+      <option value="/topic/warehouse/packer/1">📦 /topic/warehouse/packer/1</option>
+      <option value="/topic/warehouse/shipping">🚚 /topic/warehouse/shipping</option>
+    </select>
+
+    <button class="btn btn-connect" id="btn-connect" onclick="connect()">🔌 Connect</button>
+    <button class="btn btn-disconnect" id="btn-disconnect" onclick="disconnect()" disabled>⛔ Disconnect</button>
+
+    <div style="background:#0f172a;border-radius:8px;padding:12px;font-size:12px;color:#64748b;">
+      <div style="color:#f59e0b;font-weight:700;margin-bottom:6px;">📋 Test Steps:</div>
+      <div>1. Open this in Chrome → Role: Admin → Connect</div>
+      <div>2. Open this in Edge → Role: Warehouse → Connect</div>
+      <div>3. Send a notification from Edge</div>
+      <div>4. Check if notification appears in Chrome ✅</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Send Panel -->
+  <div class="card">
+    <h2>Send Notification</h2>
+
+    <label>Destination (where to send)</label>
+    <select id="destination">
+      <option value="/app/warehouse/message">Warehouse → Admin (/app/warehouse/message)</option>
+      <option value="/app/admin/message">Admin → Warehouse (/app/admin/message)</option>
+      <option value="/app/staff/message">Staff → Manager (/app/staff/message)</option>
+    </select>
+
+    <label>Notification Type (Quick Select)</label>
+    <div class="type-grid">
+      <button class="btn-type active" onclick="setType(this,'NEW_ORDER')">🛒 NEW_ORDER</button>
+      <button class="btn-type" onclick="setType(this,'ORDER_PICKED')">✅ ORDER_PICKED</button>
+      <button class="btn-type" onclick="setType(this,'ORDER_PACKED')">📦 ORDER_PACKED</button>
+      <button class="btn-type" onclick="setType(this,'LOW_STOCK')">⚠️ LOW_STOCK</button>
+      <button class="btn-type" onclick="setType(this,'PO_CREATED')">📝 PO_CREATED</button>
+      <button class="btn-type" onclick="setType(this,'SYSTEM_ALERT')">🔔 SYSTEM_ALERT</button>
+    </div>
+
+    <label>Message Body (JSON)</label>
+    <textarea id="msg-body" rows="5" style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px;color:#e2e8f0;font-size:12px;font-family:monospace;resize:vertical;outline:none;margin-bottom:12px;">{
+  "type": "NEW_ORDER",
+  "title": "🛒 New Order #12345",
+  "message": "2 items · ₹1,499 · Online Payment",
+  "source": "ORDER"
+}</textarea>
+
+    <button class="btn btn-send" id="btn-send" onclick="sendMsg()" disabled>📤 Send Notification</button>
+  </div>
+
+  <!-- BOTTOM: Log -->
+  <div class="card full-card">
+    <h2>
+      Live Log
+      <button class="btn btn-clear" onclick="clearLog()">Clear</button>
+    </h2>
+    <div class="log" id="log">
+      <div class="log-entry"><span class="log-time">--:--:--</span><span class="log-info">WebSocket tester ready. Click Connect above.</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let stompClient = null;
+
+  const TYPE_TEMPLATES = {
+    NEW_ORDER:    { type:'NEW_ORDER',    title:'🛒 New Order #12345',       message:'2 items · ₹1,499 · Online Payment',          source:'ORDER'     },
+    ORDER_PICKED: { type:'ORDER_PICKED', title:'🛒 Order Picked: #12345',   message:'Order picked by Ravi. Ready for packing.',    source:'WAREHOUSE' },
+    ORDER_PACKED: { type:'ORDER_PACKED', title:'📦 Order Packed: #12345',   message:'Order packed by Suresh. Ready for shipping.', source:'WAREHOUSE' },
+    LOW_STOCK:    { type:'LOW_STOCK',    title:'⚠️ Low Stock Alert',        message:'"Samsung TV" has only 3 units remaining.',    source:'SYSTEM'    },
+    PO_CREATED:   { type:'PO_CREATED',   title:'📝 New PO Created: PO-001', message:'Purchase Order for Samsung created.',         source:'WAREHOUSE' },
+    SYSTEM_ALERT: { type:'SYSTEM_ALERT', title:'🔔 System Alert',           message:'Warehouse system check complete.',            source:'SYSTEM'    },
+  };
+
+  function setType(btn, type) {
+    document.querySelectorAll('.btn-type').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('msg-body').value = JSON.stringify(TYPE_TEMPLATES[type], null, 2);
+  }
+
+  function log(msg, cls = 'log-info') {
+    const logEl = document.getElementById('log');
+    const time = new Date().toLocaleTimeString('en-IN', { hour12: false });
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="log-time">${time}</span><span class="${cls}">${msg}</span>`;
+    logEl.appendChild(entry);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function clearLog() {
+    document.getElementById('log').innerHTML = '';
+  }
+
+  function showToast(data) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+
+    const roleColors = { WAREHOUSE: '#065f46', ORDER: '#1d4ed8', SYSTEM: '#7c3aed' };
+    const bg = roleColors[data.source] || '#334155';
+    const color = '#fff';
+
+    toast.innerHTML = `
+      <div class="toast-title">${data.title || 'Notification'}</div>
+      <div class="toast-msg">${data.message || ''}</div>
+      <span class="toast-badge" style="background:${bg};color:${color};">${data.type || 'ALERT'}</span>
+      <span class="toast-badge" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;">from ${data.source || '?'}</span>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+  }
+
+  function connect() {
+    const url   = document.getElementById('ws-url').value.trim();
+    const topic = document.getElementById('topic').value;
+    const role  = document.getElementById('role').value;
+
+    log(`Connecting to ${url} as [${role}]...`, 'log-info');
+
+    stompClient = new StompJs.Client({
+      webSocketFactory: () => new SockJS(url),
+      reconnectDelay: 5000,
+      onConnect: () => {
+        document.getElementById('dot').classList.add('connected');
+        document.getElementById('status-text').textContent = `Connected · ${role.toUpperCase()}`;
+        document.getElementById('btn-connect').disabled = true;
+        document.getElementById('btn-disconnect').disabled = false;
+        document.getElementById('btn-send').disabled = false;
+
+        log(`✅ Connected! Subscribed to: ${topic}`, 'log-info');
+
+        stompClient.subscribe(topic, (msg) => {
+          try {
+            const data = JSON.parse(msg.body);
+            log(`📩 RECEIVED on ${topic}: ${JSON.stringify(data)}`, 'log-recv');
+            showToast(data);
+          } catch(e) {
+            log(`📩 RECEIVED (raw): ${msg.body}`, 'log-recv');
+          }
+        });
+      },
+      onDisconnect: () => {
+        document.getElementById('dot').classList.remove('connected');
+        document.getElementById('status-text').textContent = 'Disconnected';
+        document.getElementById('btn-connect').disabled = false;
+        document.getElementById('btn-disconnect').disabled = true;
+        document.getElementById('btn-send').disabled = true;
+        log('🔌 Disconnected', 'log-err');
+      },
+      onStompError: (frame) => {
+        log(`❌ STOMP Error: ${frame.headers?.message || JSON.stringify(frame)}`, 'log-err');
+      },
+    });
+
+    stompClient.activate();
+  }
+
+  function disconnect() {
+    stompClient?.deactivate();
+  }
+
+  function sendMsg() {
+    const dest = document.getElementById('destination').value;
+    const body = document.getElementById('msg-body').value.trim();
+
+    try {
+      JSON.parse(body); // validate JSON
+    } catch(e) {
+      log('❌ Invalid JSON in message body!', 'log-err');
+      return;
+    }
+
+    if (!stompClient?.connected) {
+      log('❌ Not connected!', 'log-err');
+      return;
+    }
+
+    stompClient.publish({ destination: dest, body });
+    log(`📤 SENT to ${dest}: ${body}`, 'log-send');
+  }
+</script>
+</body>
+</html>

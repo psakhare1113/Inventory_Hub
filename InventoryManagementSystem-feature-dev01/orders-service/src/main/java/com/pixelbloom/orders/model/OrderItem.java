@@ -37,6 +37,18 @@ public class OrderItem {
     private BigDecimal unitPrice;
     private BigDecimal totalPrice;
 
+    /**
+     * GST rate applied to this item (%) — from product pricing.
+     * e.g. 5.0 for clothes, 18.0 for electronics, 0 for exempt items.
+     */
+    private BigDecimal gstRate;
+
+    /**
+     * GST amount for this item (₹) = unitPrice × gstRate / 100
+     * Stored per item for invoice/audit purposes.
+     */
+    private BigDecimal gstAmount;
+
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
 

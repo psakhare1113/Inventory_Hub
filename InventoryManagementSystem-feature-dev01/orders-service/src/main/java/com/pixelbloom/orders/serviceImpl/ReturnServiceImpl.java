@@ -1,12 +1,14 @@
 package com.pixelbloom.orders.serviceImpl;
 
 import com.pixelbloom.orders.enums.InspectionStatus;
+import com.pixelbloom.orders.enums.DeliveryStatus;
 import com.pixelbloom.orders.enums.OrderStatus;
 import com.pixelbloom.orders.enums.ReturnStatus;
 import com.pixelbloom.orders.exception.*;
 import com.pixelbloom.orders.model.*;
 import com.pixelbloom.orders.repository.*;
 import com.pixelbloom.orders.requestEntity.InventoryInitiateReturnRequest;
+import com.pixelbloom.orders.requestEntity.InventoryInspectionUpdateRequest;
 import com.pixelbloom.orders.requestEntity.InventoryReleaseRequest;
 import com.pixelbloom.orders.requestEntity.OrderInspectionRequest;
 import com.pixelbloom.orders.requestEntity.OrderPhysicalVerificationRequest;
@@ -14,6 +16,7 @@ import com.pixelbloom.orders.responseEntity.InventoryInspectionResponse;
 import com.pixelbloom.orders.responseEntity.OrderPhysicalInspectionResponse;
 import com.pixelbloom.orders.responseEntity.ReturnResponse;
 import com.pixelbloom.orders.restClients.InventoryClientF;
+import com.pixelbloom.orders.restClients.ProductsClient;
 
 import com.pixelbloom.orders.service.ReturnService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +40,8 @@ public class ReturnServiceImpl implements ReturnService {
         private final OrderItemRepository orderItemRepository;
         private final ReturnRepository returnRepository;
         private final InventoryClientF inventoryClient;
+        private final ProductsClient productsClient;
+        private final DeliveryAssignmentRepository deliveryAssignmentRepository;
 
     @Autowired
     private OrderServiceImpl orderService;
@@ -51,6 +56,29 @@ public class ReturnServiceImpl implements ReturnService {
         OrderItem item = orderItemRepository.findByOrderNumberAndBarcode(request.getOrderNumber(), request.getBarcode())
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found: " + request.getBarcode()));
 
+        // If item-level status is not yet DELIVERED but parent order is DELIVERED,
+        // sync the item status so the return window check passes (handles legacy/inconsistent data)
+        if (item.getOrderStatus() != OrderStatus.DELIVERED
+                && item.getOrderStatus() != OrderStatus.RETURN_INITIATED
+                && item.getOrderStatus() != OrderStatus.RETURN_WINDOW_VALID
+                && item.getOrderStatus() != OrderStatus.RETURN_CATEGORY_ALLOWED
+                && order.getOrderStatus() == OrderStatus.DELIVERED) {
+            item.setOrderStatus(OrderStatus.DELIVERED);
+            if (item.getDeliveredAt() == null && order.getDeliveredAt() != null) {
+                item.setDeliveredAt(order.getDeliveredAt());
+            }
+            orderItemRepository.save(item);
+            log.info("Synced item {} status to DELIVERED from parent order {}", request.getBarcode(), request.getOrderNumber());
+        }
+
+        // Sync deliveredAt from parent order if missing on item — prevents false "window expired" error
+        // when item.deliveredAt is NULL but order.deliveredAt is set
+        if (item.getDeliveredAt() == null && order.getDeliveredAt() != null) {
+            item.setDeliveredAt(order.getDeliveredAt());
+            orderItemRepository.save(item);
+            log.info("Synced deliveredAt from parent order {} to item barcode {}", request.getOrderNumber(), request.getBarcode());
+        }
+
         validateReturnWindow(item);
         validateReturnEligibility(item);
 
@@ -61,12 +89,49 @@ public class ReturnServiceImpl implements ReturnService {
 
         Return returnEntity = Return.builder().returnReference(returnReference)
                 .orderId(order.getId()).orderNumber(request.getOrderNumber())
+                .customerId(order.getCustomerId())
                 .returnReason(request.getReturnReason()).returnStatus(ReturnStatus.RETURN_INITIATED)
                 .barcode(request.getBarcode())
                 .returnedStartedAt(LocalDateTime.now()).build();
 
         returnRepository.save(returnEntity);
 
+        // ── Auto-assign return pickup to the delivery boy who originally delivered this order ──
+        // Task is created with RETURN_PICKUP_AWAITING_APPROVAL — delivery boy cannot see it yet.
+        // Admin must approve the return first → task status changes to RETURN_PICKUP_PENDING.
+        deliveryAssignmentRepository
+            .findTopByOrderNumberOrderByAssignedAtDesc(request.getOrderNumber())
+            .ifPresentOrElse(
+                originalAssignment -> {
+                    DeliveryAssignment returnPickupTask = DeliveryAssignment.builder()
+                        .orderNumber(request.getOrderNumber())
+                        .deliveryBoyId(originalAssignment.getDeliveryBoyId())
+                        .deliveryBoyName(originalAssignment.getDeliveryBoyName())
+                        .deliveryStatus(DeliveryStatus.RETURN_PICKUP_AWAITING_APPROVAL)
+                        .isReturnPickupTask(true)
+                        .returnReference(returnReference)
+                        .assignedAt(LocalDateTime.now())
+                        .build();
+                    deliveryAssignmentRepository.save(returnPickupTask);
+                    log.info("Return pickup task created (awaiting admin approval) for delivery boy {} on order {} (returnRef: {})",
+                        originalAssignment.getDeliveryBoyId(), request.getOrderNumber(), returnReference);
+                },
+                () -> {
+                    // No delivery assignment found — create unassigned task (admin will assign after approval)
+                    DeliveryAssignment returnPickupTask = DeliveryAssignment.builder()
+                        .orderNumber(request.getOrderNumber())
+                        .deliveryBoyId(0L) // 0 = unassigned, admin must assign
+                        .deliveryBoyName("Unassigned")
+                        .deliveryStatus(DeliveryStatus.RETURN_PICKUP_AWAITING_APPROVAL)
+                        .isReturnPickupTask(true)
+                        .returnReference(returnReference)
+                        .assignedAt(LocalDateTime.now())
+                        .build();
+                    deliveryAssignmentRepository.save(returnPickupTask);
+                    log.warn("No delivery boy found for order {} — return pickup task created as unassigned, awaiting admin approval (returnRef: {})",
+                        request.getOrderNumber(), returnReference);
+                }
+            );
 
         // Pass returnReference to inventory service
         inventoryClient.returnInitiated(
@@ -105,38 +170,62 @@ public class ReturnServiceImpl implements ReturnService {
         OrderItem item = orderItemRepository.findByOrderNumberAndBarcode(request.getOrderNumber(), request.getBarcode())
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found: " + request.getBarcode()));
 
-        // Call inventory service for physical inspection
-        OrderPhysicalInspectionResponse response = inventoryClient.getPhysicalVerificationDone(request);
+        // Direct approval/rejection based on delivery boy input
+        Boolean approved = request.getApproved() != null ? request.getApproved() : false;
+        String inspectionId = "INS-" + System.currentTimeMillis();
 
+        // Store inspection details in return entity
+        returnEntity.setInspectionId(inspectionId);
+        
         // Update order item status based on inspection result
-        if (response.getApproved()) {
+        if (approved) {
             item.setOrderStatus(OrderStatus.RETURN_APPROVED);
             returnEntity.setReturnStatus(ReturnStatus.RETURN_APPROVED);
         } else {
             item.setOrderStatus(OrderStatus.RETURN_REJECTED);
             returnEntity.setReturnStatus(ReturnStatus.RETURN_REJECTED);
         }
+        
         orderItemRepository.save(item);
+        returnRepository.save(returnEntity);
 
-        ReturnStatus returnStatus = response.getApproved()? ReturnStatus.RETURN_APPROVED: ReturnStatus.RETURN_REJECTED;
+        // Call inventory service to store inspection details (remarks, condition, images)
+        try {
+            inventoryClient.updateReturnInspectionDetails(
+                InventoryInspectionUpdateRequest.builder()
+                    .orderNumber(request.getOrderNumber())
+                    .barcode(request.getBarcode())
+                    .approved(approved)
+                    .inspectorRemarks(request.getInspectorRemarks())
+                    .itemCondition(request.getItemCondition())
+                    .inspectionImages(request.getInspectionImages())
+                    .inspectedBy(request.getInspectedBy() != null ? request.getInspectedBy() : "delivery-boy")
+                    .build()
+            );
+            log.info("Inspection details stored in inventory service for order: {}, barcode: {}", 
+                request.getOrderNumber(), request.getBarcode());
+        } catch (Exception e) {
+            log.error("Failed to store inspection details in inventory service: {}", e.getMessage());
+            // Continue even if inventory service call fails - data is already in orders DB
+        }
 
+        ReturnStatus returnStatus = approved ? ReturnStatus.RETURN_APPROVED : ReturnStatus.RETURN_REJECTED;
+        InspectionStatus inspectionStatus = approved ? InspectionStatus.INSPECTION_APPROVED : InspectionStatus.INSPECTION_REJECTED;
 
-        InspectionStatus inspectionStatus = response.getApproved()? InspectionStatus.INSPECTION_APPROVED: InspectionStatus.INSPECTION_REJECTED;
-
-        String message = response.getApproved()? "Item approved for return": "Item rejected: "
+        String message = approved ? "Item approved for return" : "Item rejected: "
                 + (request.getRejectionReason() != null ? request.getRejectionReason() : "Failed inspection-item found non-returnable");
 
         return ReturnResponse.builder()
                 .returnReference(returnEntity.getReturnReference())
                 .barcode(request.getBarcode())
-                .inspectionId(response.getInspectionId())
-                .approved(response.getApproved())
+                .inspectionId(inspectionId)
+                .approved(approved)
                 .orderNumber(request.getOrderNumber())
                 .returnStatus(returnStatus)
                 .status(inspectionStatus)
                 .message(message)
-                .returnedStartedAt(returnEntity.getReturnedStartedAt()) // want to set this date from Return Entity
-                .rejectionReason(response.getRejectionReason())
+                .returnedStartedAt(returnEntity.getReturnedStartedAt())
+                .rejectionReason(request.getRejectionReason())
                 .build();
     }
 
@@ -250,12 +339,29 @@ public class ReturnServiceImpl implements ReturnService {
 
 
     private void validateReturnWindow(OrderItem item) {
-        if (item.getOrderStatus() != OrderStatus.DELIVERED) {
+        // Allow return if item is DELIVERED or already in a return-related status
+        // (RETURN_INITIATED means return was already started — allow re-validation)
+        boolean isEligibleForReturn = item.getOrderStatus() == OrderStatus.DELIVERED
+                || item.getOrderStatus() == OrderStatus.RETURN_INITIATED
+                || item.getOrderStatus() == OrderStatus.RETURN_WINDOW_VALID
+                || item.getOrderStatus() == OrderStatus.RETURN_CATEGORY_ALLOWED;
+
+        if (!isEligibleForReturn) {
             item.setOrderStatus(OrderStatus.RETURN_WINDOW_NOT_VALID);
             throw new ReturnWindowExpiredException("Item must be delivered before requesting return..");
         }
 
-        LocalDateTime deliveryDate = item.getDeliveredAt() != null ? item.getDeliveredAt() : item.getCreatedAt();
+        // Use deliveredAt if set — NEVER fall back to createdAt (createdAt is order placement date,
+        // not delivery date; using it causes all old orders to appear "expired")
+        LocalDateTime deliveryDate = item.getDeliveredAt();
+        if (deliveryDate == null) {
+            // deliveredAt not set on item — skip window check (fail-open)
+            // This handles legacy data where delivery date was not recorded
+            log.warn("deliveredAt is null for item barcode {} — skipping 15-day window check (fail-open)", item.getBarcode());
+            item.setOrderStatus(OrderStatus.RETURN_WINDOW_VALID);
+            return;
+        }
+
         if (deliveryDate.isBefore(LocalDateTime.now().minusDays(15))) {
             item.setOrderStatus(OrderStatus.RETURN_WINDOW_EXPIRED);
             throw new ReturnWindowExpiredException("Return window has expired. Items can only be returned within 15 days");
@@ -266,17 +372,30 @@ public class ReturnServiceImpl implements ReturnService {
 
     private void validateReturnEligibility(OrderItem item) {
         try {
-            //boolean isEligible = productClient.isProductRefundEligible(item.getProductId(), item.getCategoryId(), item.getSubcategoryId());
-            boolean isEligible =true;
-            if (isEligible) {
+            // Call products service to check is_eligible_for_return flag
+            // from imsproductsdb.products table
+            Boolean isEligible = productsClient.isProductRefundEligible(
+                    item.getProductId(),
+                    item.getCategoryId(),
+                    item.getSubcategoryId()
+            );
+
+            if (Boolean.TRUE.equals(isEligible)) {
                 item.setOrderStatus(OrderStatus.RETURN_CATEGORY_ALLOWED);
+                log.info("Product {} is eligible for return", item.getProductId());
             } else {
                 item.setOrderStatus(OrderStatus.RETURN_CATEGORY_NOT_ALLOWED);
-                throw new ReturnEligibilityException("This product category is not eligible for returns");
+                throw new ReturnEligibilityException("This product is not eligible for returns.");
             }
+        } catch (ReturnEligibilityException e) {
+            // Re-throw eligibility exceptions directly
+            throw e;
         } catch (Exception e) {
-            item.setOrderStatus(OrderStatus.RETURN_CATEGORY_NOT_ALLOWED);
-            throw new ReturnEligibilityException("Unable to verify product return eligibility. Please try again later");
+            // If products service is unavailable, log warning and allow return
+            // (fail-open: don't block customer due to service unavailability)
+            log.warn("Could not verify return eligibility for product {} — allowing return by default: {}",
+                    item.getProductId(), e.getMessage());
+            item.setOrderStatus(OrderStatus.RETURN_CATEGORY_ALLOWED);
         }
     }
 

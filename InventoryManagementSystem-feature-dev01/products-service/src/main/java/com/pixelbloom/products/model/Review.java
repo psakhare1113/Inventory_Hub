@@ -34,6 +34,14 @@ public class Review {
     @Column(length = 1000)
     private String comment;
 
+    @Column(name = "photo_url", length = 500)
+    @com.fasterxml.jackson.annotation.JsonProperty("photoUrl")
+    private String photoUrl;
+
+    @Column(name = "customer_name", length = 100)
+    @com.fasterxml.jackson.annotation.JsonProperty("customerName")
+    private String customerName;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

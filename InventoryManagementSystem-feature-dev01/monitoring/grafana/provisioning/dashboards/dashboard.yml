@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: 'Inventory Hub Dashboards'
+    orgId: 1
+    folder: 'Inventory Hub'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: C:\grafana\grafana-13.0.1+security-01\conf\provisioning\dashboards

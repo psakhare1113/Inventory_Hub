@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Incoming Stock Alert — Action Required</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f4; font-family: Arial, sans-serif;">
+
+<table align="center" width="100%" cellpadding="0" cellspacing="0"
+       style="max-width:600px; background-color:#ffffff; margin:20px auto; border-radius:8px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.05);">
+
+    <!-- Header -->
+    <tr>
+        <td style="background-color:#0d6e6e; padding:20px; text-align:center;">
+            <img src="cid:logo" alt="Logo" style="height:60px;">
+            <h1 style="color:#ffffff; margin:10px 0 0; font-size:20px;">Warehouse Management System</h1>
+        </td>
+    </tr>
+
+    <!-- Alert Banner -->
+    <tr>
+        <td style="background-color:#fef9c3; padding:16px 30px; border-left:4px solid #f59e0b;">
+            <p style="margin:0; font-size:16px; font-weight:bold; color:#92400e;">
+                📦 Incoming Stock Alert — Please Prepare for Receiving
+            </p>
+        </td>
+    </tr>
+
+    <!-- Body -->
+    <tr>
+        <td style="padding:30px; color:#333333;">
+            <p style="font-size:15px;">Dear <strong>Receiving Clerk</strong>,</p>
+
+            <p style="font-size:14px; color:#555;">
+                The Warehouse Manager has notified you that stock is incoming for the following
+                Purchase Order. Please <strong>allocate space</strong> and prepare for receiving.
+            </p>
+
+            <!-- PO Details Table -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background-color:#f8f9fa; border-radius:8px; padding:20px; margin:20px 0; border:1px solid #e0e0e0;">
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777; width:40%;">PO Number</td>
+                    <td style="padding:8px 0; font-size:14px; font-weight:bold; color:#0d6e6e;">${poNumber}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Supplier</td>
+                    <td style="padding:8px 0; font-size:14px; color:#333;">${supplierName}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Expected Delivery</td>
+                    <td style="padding:8px 0; font-size:14px; font-weight:bold; color:#b45309;">${expectedDate}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Items Incoming</td>
+                    <td style="padding:8px 0; font-size:14px; color:#333;">${itemsList}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Total Amount</td>
+                    <td style="padding:8px 0; font-size:14px; font-weight:bold; color:#333;">${totalAmount}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0; font-size:13px; color:#777;">Status</td>
+                    <td style="padding:8px 0;">
+                        <span style="background-color:#dbeafe; color:#1e40af; padding:3px 12px; border-radius:12px; font-size:12px; font-weight:bold;">
+                            ✅ APPROVED — Ready to Receive
+                        </span>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Action Steps -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background-color:#f0fdf4; border-radius:8px; padding:20px; margin:20px 0; border-left:4px solid #16a34a;">
+                <tr>
+                    <td>
+                        <p style="margin:0 0 10px; font-size:14px; font-weight:bold; color:#166534;">📋 Your Action Steps:</p>
+                        <ol style="margin:0; padding-left:20px; font-size:13px; color:#555; line-height:1.8;">
+                            <li>Login to the Warehouse Dashboard</li>
+                            <li>Go to <strong>GRN Tab</strong> → Find PO <strong>${poNumber}</strong></li>
+                            <li>Click <strong>"Receive Goods (GRN)"</strong> when stock arrives</li>
+                            <li>Enter received quantities and condition for each item</li>
+                            <li>Submit GRN — Warehouse Manager will inspect and complete putaway</li>
+                        </ol>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Note from Manager -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background-color:#fef3c7; border-radius:8px; padding:16px 20px; margin:20px 0; border-left:4px solid #f59e0b;">
+                <tr>
+                    <td>
+                        <p style="margin:0; font-size:13px; color:#92400e;">
+                            <strong>📢 Note from Warehouse Manager:</strong><br>
+                            ${managerNote}
+                        </p>
+                    </td>
+                </tr>
+            </table>
+
+            <p style="font-size:13px; color:#888; margin-top:20px;">
+                This notification was sent by the Warehouse Manager via the Warehouse Management System.
+                Please do not reply to this email.
+            </p>
+        </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+        <td style="background-color:#232F3E; padding:16px; text-align:center;">
+            <p style="margin:0; color:#aaa; font-size:12px;">
+                © 2026 PixelBloom Digital — Warehouse Management System
+            </p>
+        </td>
+    </tr>
+
+</table>
+</body>
+</html>

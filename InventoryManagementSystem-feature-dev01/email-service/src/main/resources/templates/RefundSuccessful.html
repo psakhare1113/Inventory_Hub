@@ -1,9 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Refund Processed</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f4f4f4; font-family: Arial, sans-serif; }
+    .container { max-width: 600px; margin: 30px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #4CAF50; padding: 30px 40px; text-align: center; }
+    .header img { height: 40px; }
+    .header h1 { color: #ffffff; margin: 10px 0 0; font-size: 22px; }
+    .body { padding: 30px 40px; color: #333333; }
+    .body p { font-size: 15px; line-height: 1.6; }
+    .refund-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0; }
+    .refund-box .amount { font-size: 28px; font-weight: bold; color: #16a34a; }
+    .refund-box .label { font-size: 13px; color: #6b7280; margin-bottom: 4px; }
+    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+    .info-row:last-child { border-bottom: none; }
+    .info-row .key { color: #6b7280; }
+    .info-row .val { font-weight: 600; color: #111827; }
+    .timeline-box { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 14px 18px; border-radius: 4px; margin: 20px 0; font-size: 14px; color: #1e40af; }
+    .footer { background: #f9fafb; padding: 20px 40px; text-align: center; font-size: 12px; color: #9ca3af; }
+  </style>
+</head>
 <body>
-<h1>Order Delivered!</h1>
-<p>Dear ${customerName},</p>
-<p>Your order <strong>${orderNumber}</strong> has been Refund Successful.</p>
-<p>Delivered on: ${eventTime}</p>
+<div class="container">
+  <div class="header">
+    <img src="cid:logo" alt="PixelBloom"/>
+    <h1>✅ Refund Initiated Successfully</h1>
+  </div>
+  <div class="body">
+    <p>Dear <strong>${customerName}</strong>,</p>
+    <p>Great news! Your refund for order <strong>#${orderNumber}</strong> has been successfully initiated.</p>
+
+    <div class="refund-box">
+      <div class="label">Refund Amount</div>
+      <div class="amount">${refundAmount}</div>
+    </div>
+
+    <div class="info-row">
+      <span class="key">Order Number</span>
+      <span class="val">#${orderNumber}</span>
+    </div>
+    <div class="info-row">
+      <span class="key">Refund To</span>
+      <span class="val">${paymentSource}</span>
+    </div>
+    <div class="info-row">
+      <span class="key">Initiated On</span>
+      <span class="val">${eventTime}</span>
+    </div>
+
+    <div class="timeline-box">
+      ⏱ Expected credit time: <strong>${refundTimeline}</strong> (depending on your bank)
+    </div>
+
+    <p style="font-size:13px; color:#6b7280;">${additionalInfo}</p>
+    <p>If you have any questions, please contact our support team.</p>
+    <p>Thank you for shopping with us!</p>
+  </div>
+  <div class="footer">
+    &copy; 2025 PixelBloom Digital. All rights reserved.
+  </div>
+</div>
 </body>
 </html>

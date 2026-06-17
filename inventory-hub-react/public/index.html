@@ -29,6 +29,27 @@
     }
   </script>
   <style>
+    /* Remove any green lines or borders globally */
+    * {
+      border-top: none !important;
+      outline: none !important;
+    }
+    
+    html, body {
+      border-top: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    
+    /* Hide all green elements */
+    [class*="green"],
+    [style*="green"],
+    [class*="bg-green"],
+    [class*="border-green"],
+    [class*="text-green"] {
+      display: none !important;
+    }
+    
     .arch-image {
       border-top-left-radius: 9999px;
       border-top-right-radius: 9999px;

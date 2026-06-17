@@ -5,7 +5,10 @@ import com.pixelbloom.products.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -18,6 +21,12 @@ public class CategoryController {
         return ResponseEntity.ok(categoryService.getAllCategories());
     }
 
+    // Returns { categoryId: gstRate } — used by frontend checkout for real-time GST
+    @GetMapping("/gst")
+    public ResponseEntity<Map<Long, BigDecimal>> getCategoryGstRates() {
+        return ResponseEntity.ok(categoryService.getGstRateMap());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Category> getCategoryById(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.getCategoryById(id));
@@ -28,6 +37,7 @@ public class CategoryController {
         return ResponseEntity.ok(categoryService.createCategory(category));
     }
 
+    // Admin can update gstRate per category via this endpoint
     @PutMapping("/{id}")
     public ResponseEntity<Category> updateCategory(@PathVariable Long id, @RequestBody Category category) {
         return ResponseEntity.ok(categoryService.updateCategory(id, category));

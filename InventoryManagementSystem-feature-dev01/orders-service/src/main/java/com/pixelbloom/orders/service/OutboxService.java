@@ -40,21 +40,21 @@ public class OutboxService {
             }
 
             try {
-                log.info(" Publishing to Kafka | key={} | payload={} | topic={}",event.getAggregateType() + "-" + event.getAggregateId(), event.getPayload(),topic);
+                log.debug(" Publishing to Kafka | key={} | topic={}", event.getAggregateType() + "-" + event.getAggregateId(), topic);
 
                 kafkaTemplate.send(topic,event.getAggregateType() + "-" + event.getAggregateId(),event.getPayload()).get();
                 event.setStatus("SENT");
                 log.info("Successfully published outbox event: {}", event.getId());
             } catch (Exception ex) {
-                log.error(" Kafka publish failed for outboxId={}", event.getId(), ex);
                 // Increment retry count to prevent infinite loops
                 int retryCount = event.getRetryCount() != null ? event.getRetryCount() : 0;
-                if (retryCount >= 5) { // Max 5 retries
-                    event.setStatus("FAILED");
-                    log.warn(" Event {} moved to FAILED after {} retries", event.getId(), retryCount);
+                if (retryCount >= 5) {
+                    event.setStatus("DEAD");  // Terminal state — never retried again
+                    log.warn(" Event {} moved to DEAD after {} retries (Kafka unavailable)", event.getId(), retryCount);
                 } else {
                     event.setStatus("FAILED");
                     event.setRetryCount(retryCount + 1);
+                    log.warn(" Kafka publish failed for outboxId={}, retry {}/5", event.getId(), retryCount + 1);
                 }
             }
         }

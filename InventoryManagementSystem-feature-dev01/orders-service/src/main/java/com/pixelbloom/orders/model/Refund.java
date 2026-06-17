@@ -38,6 +38,9 @@ public class Refund {
 
     private String refundReason;
 
+    /** "CASH" or "ONLINE" — chosen by the customer */
+    private String refundMethod;
+
     private BigDecimal totalRefundAmount;
 
     private String currency;

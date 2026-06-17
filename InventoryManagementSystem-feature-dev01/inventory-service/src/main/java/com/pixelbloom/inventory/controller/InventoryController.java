@@ -1,15 +1,21 @@
 package com.pixelbloom.inventory.controller;
 
+import com.pixelbloom.inventory.enums.InventoryStatus;
 import com.pixelbloom.inventory.enums.TransactionType;
+import com.pixelbloom.inventory.exception.ResourceNotFoundException;
 import com.pixelbloom.inventory.model.*;
 import com.pixelbloom.inventory.requestEntity.AdminInventoryUpdateRequest;
 import com.pixelbloom.inventory.requestEntity.PriceUpdateRequest;
+import com.pixelbloom.inventory.repository.InventoryRepository;
+import com.pixelbloom.inventory.repository.InventoryReservationRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.pixelbloom.inventory.service.InventoryService;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,9 +35,15 @@ import java.util.Map;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+    private final InventoryRepository inventoryRepository;
+    private final InventoryReservationRepository reservationRepository;
 
-    public InventoryController(InventoryService inventoryService) {
+    public InventoryController(InventoryService inventoryService,
+                               InventoryRepository inventoryRepository,
+                               InventoryReservationRepository reservationRepository) {
         this.inventoryService = inventoryService;
+        this.inventoryRepository = inventoryRepository;
+        this.reservationRepository = reservationRepository;
     }
 
     // ======================================================
@@ -39,16 +51,120 @@ public class InventoryController {
     // ======================================================
 
     /**
+     * Get all inventory items with product details
+     * Used by admin dashboard to display inventory with product information
+     */
+    @GetMapping
+    public List<InventoryWithProductDetails> getAllInventoryWithProductDetails() {
+        return inventoryService.getAllInventoryWithProductDetails();
+    }
+
+    /**
+     * Get inventory item by barcode with product details
+     */
+    @GetMapping("/barcode/{barcode}")
+    public ResponseEntity<InventoryWithProductDetails> getInventoryByBarcode(@PathVariable String barcode) {
+        List<InventoryWithProductDetails> allInventory = inventoryService.getAllInventoryWithProductDetails();
+        InventoryWithProductDetails inventory = allInventory.stream()
+                .filter(inv -> inv.getBarcode().equals(barcode))
+                .findFirst()
+                .orElse(null);
+        
+        if (inventory != null) {
+            return ResponseEntity.ok(inventory);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Get inventory items by product ID
+     */
+    @GetMapping("/product/{productId}")
+    public List<InventoryWithProductDetails> getInventoryByProductId(@PathVariable Long productId) {
+        List<InventoryWithProductDetails> allInventory = inventoryService.getAllInventoryWithProductDetails();
+        return allInventory.stream()
+                .filter(inv -> inv.getProductId().equals(productId))
+                .toList();
+    }
+
+    /**
+     * Test endpoint to verify inventory service is working
+     */
+    @GetMapping("/test")
+    public ResponseEntity<Map<String, Object>> testInventoryService() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("message", "Inventory service is running");
+        response.put("timestamp", LocalDateTime.now());
+        response.put("inventoryCount", inventoryService.getAllInventoryWithProductDetails().size());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Admin adds a new physical inventory item (barcode-level)
      * Example: New TV unit received in warehouse
      */
     @PostMapping("/add")
-    public Inventory addInventory(@RequestBody Inventory inventory) {
-        return inventoryService.addInventory(inventory);
+    public ResponseEntity<Map<String, Object>> addInventory(@RequestBody Inventory inventory) {
+        try {
+            Inventory savedInventory = inventoryService.addInventory(inventory);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Inventory added successfully");
+            response.put("inventory", savedInventory);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Failed to add inventory: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * Update complete inventory item
+     */
+    @PutMapping("/{barcode}")
+    public ResponseEntity<Map<String, Object>> updateInventory(@PathVariable String barcode, @RequestBody Inventory inventoryUpdate) {
+        try {
+            Inventory existingInventory = inventoryRepository.findByBarcode(barcode)
+                    .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
+            
+            // Update all fields
+            existingInventory.setProductId(inventoryUpdate.getProductId());
+            existingInventory.setCategoryId(inventoryUpdate.getCategoryId());
+            existingInventory.setSubcategoryId(inventoryUpdate.getSubcategoryId());
+            existingInventory.setWarehouseId(inventoryUpdate.getWarehouseId());
+            existingInventory.setInventoryStatus(inventoryUpdate.getInventoryStatus());
+            existingInventory.setPlatformStatus(inventoryUpdate.getPlatformStatus());
+            existingInventory.setConditionStatus(inventoryUpdate.getConditionStatus());
+            existingInventory.setMrp(inventoryUpdate.getMrp());
+            existingInventory.setShowroomPrice(inventoryUpdate.getShowroomPrice());
+            existingInventory.setBuyPrice(inventoryUpdate.getBuyPrice());
+            existingInventory.setSellingPrice(inventoryUpdate.getSellingPrice());
+            existingInventory.setStockSource(inventoryUpdate.getStockSource());
+            existingInventory.setIsCustomerReturned(inventoryUpdate.getIsCustomerReturned());
+            existingInventory.setIsWarehouseDamaged(inventoryUpdate.getIsWarehouseDamaged());
+            existingInventory.setUpdatedBy(inventoryUpdate.getUpdatedBy());
+            
+            Inventory savedInventory = inventoryRepository.save(existingInventory);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Inventory updated successfully");
+            response.put("inventory", savedInventory);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Failed to update inventory: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
     }
 
     /*** Admin corrects pricing for a specific barcode  (MRP / showroom / selling price)   */
-    @PatchMapping("/{barcode}/price")
+    @PutMapping("/{barcode}/price")
     public Inventory updatePrice(@PathVariable String barcode,@RequestBody PriceUpdateRequest request
     ) {
         return inventoryService.updatePrice(barcode, request);
@@ -56,8 +172,48 @@ public class InventoryController {
 
     /*** Admin disables an inventory item from platform visibility Example: damaged / internal hold / audit    */
     @PatchMapping("/{barcode}/disable")
-    public void disableInventory(@PathVariable String barcode,@RequestParam Long adminId) {
-        inventoryService.disableInventory(barcode, adminId);
+    public ResponseEntity<Map<String, Object>> disableInventory(@PathVariable String barcode,@RequestParam Long adminId) {
+        try {
+            inventoryService.disableInventory(barcode, adminId);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Inventory disabled successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Failed to disable inventory: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * Permanently delete inventory item (admin only)
+     */
+    @DeleteMapping("/{barcode}")
+    public ResponseEntity<Map<String, Object>> deleteInventory(@PathVariable String barcode) {
+        try {
+            Inventory inventory = inventoryRepository.findByBarcode(barcode)
+                    .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
+            
+            // Check if inventory can be deleted (not sold or reserved)
+            if (inventory.getInventoryStatus() == InventoryStatus.SALE || 
+                inventory.getInventoryStatus() == InventoryStatus.RESERVED) {
+                throw new IllegalStateException("Cannot delete sold or reserved inventory");
+            }
+            
+            inventoryRepository.delete(inventory);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Inventory deleted successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Failed to delete inventory: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
     }
 
     /*** Admin re-enables a previously disabled inventory item   */
@@ -83,6 +239,51 @@ public class InventoryController {
          log.info("Reserve request from user: {} with role: {}", username, userRole);
          return inventoryService.reserveInventoryForOrder(request);
    }
+
+    /**
+     * Admin/Dev: Force-release stale reservation by barcode.
+     * Use when a reservation is stuck in DB after a failed order attempt.
+     * POST /api/inventory/reservation/force-release
+     * Body: { "barcodes": ["PRD-xxx-1", "PRD-xxx-2"] }
+     */
+    @PostMapping("/reservation/force-release")
+    public ResponseEntity<Map<String, Object>> forceReleaseReservation(
+            @RequestBody Map<String, Object> request) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<String> barcodes = (List<String>) request.get("barcodes");
+            if (barcodes == null || barcodes.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "barcodes list is required"));
+            }
+
+            List<String> released = new ArrayList<>();
+            List<String> notFound  = new ArrayList<>();
+
+            for (String barcode : barcodes) {
+                reservationRepository.findByBarcode(barcode).ifPresentOrElse(res -> {
+                    // Restore inventory to AVAILABLE
+                    inventoryRepository.findById(res.getInventoryId()).ifPresent(inv -> {
+                        if (inv.getInventoryStatus() == InventoryStatus.RESERVED) {
+                            inv.setInventoryStatus(InventoryStatus.AVAILABLE);
+                            inventoryRepository.save(inv);
+                        }
+                    });
+                    reservationRepository.delete(res);
+                    released.add(barcode);
+                    log.info("Force-released reservation for barcode={}", barcode);
+                }, () -> notFound.add(barcode));
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "released", released,
+                    "notFound",  notFound,
+                    "message",   "Force release completed"
+            ));
+        } catch (Exception e) {
+            log.error("Force release failed", e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
 
     /*** Release reserved inventory- Scenarios:- Payment failed - Order cancelled - Refund approved  * Inventory moves: RESERVED → AVAILABLE  */
     @PostMapping("/release")
@@ -196,10 +397,27 @@ GET /api/auth/user/inventory/stock/check?productId=101&quantity=3
         Map<String, Object> response = new HashMap<>();
         response.put("productId", productId);
         response.put("available", availableCount > 0);
+        response.put("stockCount", availableCount);  // exact count
         response.put("stockLevel", availableCount > 10 ? "HIGH" : availableCount > 0 ? "LOW" : "OUT_OF_STOCK");
-        // Don't expose exact count for security reasons
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get pricing data for a product from products service
+     * Used by admin when adding inventory to auto-fill pricing fields
+     */
+    @GetMapping("/pricing/{productId}")
+    public ResponseEntity<Map<String, Object>> getProductPricing(@PathVariable Long productId) {
+        try {
+            Map<String, Object> pricingData = inventoryService.getProductPricing(productId);
+            return ResponseEntity.ok(pricingData);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Failed to fetch pricing: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
     }
 
 }

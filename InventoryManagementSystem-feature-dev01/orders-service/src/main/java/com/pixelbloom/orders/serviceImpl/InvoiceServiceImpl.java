@@ -6,6 +6,7 @@ import com.pixelbloom.orders.model.InvoiceItem;
 import com.pixelbloom.orders.model.Order;
 import com.pixelbloom.orders.model.OrderItem;
 import com.pixelbloom.orders.publisher.InvoiceEventPublisher;
+import com.pixelbloom.orders.restClients.AuthServiceClient;
 import com.pixelbloom.orders.service.CustomerdetailsService;
 import com.pixelbloom.orders.service.InvoiceService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     private final InvoiceEventPublisher invoiceEventPublisher;
     private final CustomerdetailsService customerdetailsService;
+    private final AuthServiceClient authServiceClient;
 
     public  InvoiceEvent publishInvoiceEvent(Order order, List<OrderItem> items) {
         // Calculate tax amounts
@@ -46,10 +48,28 @@ public class InvoiceServiceImpl implements InvoiceService {
         String customerAddress = customer.getAddressLine1() + ", " + customer.getCity() +
                 ", " + customer.getState() + " - " + customer.getPincode();
 
+        // If email is missing or fake in orders DB, fetch it from auth-server as fallback
+        String customerEmail = customer.getEmail();
+        if (customerEmail == null || customerEmail.isBlank() || customerEmail.endsWith("@example.com")) {
+            try {
+                java.util.Map<String, Object> authCustomer = authServiceClient.getCustomerById(order.getCustomerId());
+                if (authCustomer != null) {
+                    Object emailObj = authCustomer.get("email");
+                    if (emailObj == null) emailObj = authCustomer.get("customerEmail");
+                    if (emailObj != null && !emailObj.toString().isBlank()) {
+                        customerEmail = emailObj.toString();
+                        log.info("Fetched email from auth-server for customerId {}: {}", order.getCustomerId(), customerEmail);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch email from auth-server for customerId {}: {}", order.getCustomerId(), e.getMessage());
+            }
+        }
+
         InvoiceEvent invoiceEvent = InvoiceEvent.builder()
                 .orderNumber(order.getOrderNumber())
                 .customerId(customer.getCustomerId())
-                .email(customer.getEmail())
+                .email(customerEmail)
                 .billingName(customerName)
                 .billingAddress(customerAddress)
                 .shippingName(customerName)
@@ -96,7 +116,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         defaultCustomer.setCustomerId(customerId);
         defaultCustomer.setFirstName("Customer");
         defaultCustomer.setLastName(String.valueOf(customerId));
-        defaultCustomer.setEmail("customer" + customerId + "@example.com");
+        defaultCustomer.setEmail(null); // email will be resolved from auth-server
         defaultCustomer.setAddressLine1("Address not available");
         defaultCustomer.setCity("Unknown");
         defaultCustomer.setState("Unknown");

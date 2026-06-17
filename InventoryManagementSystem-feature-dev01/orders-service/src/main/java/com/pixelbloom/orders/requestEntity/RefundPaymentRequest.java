@@ -12,4 +12,5 @@ public class RefundPaymentRequest {
     private BigDecimal refundAmount;
     private String currency;
     private String refundReason;
+    private String paymentSource;
 }

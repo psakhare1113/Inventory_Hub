@@ -11,5 +11,6 @@ public class CustomerAddressRequest {
     private String state;
     private String pincode;
     private String country;
-    private boolean isDefault;
+    private String phone;
+    private Boolean isDefault;
 }

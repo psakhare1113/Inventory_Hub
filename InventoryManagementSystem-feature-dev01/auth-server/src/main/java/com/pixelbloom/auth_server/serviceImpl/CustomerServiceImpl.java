@@ -42,4 +42,12 @@ public class CustomerServiceImpl implements CustomerService {
         public void updateCustomer(Customer customer) {
             customerRepository.save(customer);
         }
+
+        @Override
+        public void deleteCustomer(Long customerId) {
+            if (!customerRepository.existsById(customerId)) {
+                throw new RuntimeException("Customer not found with id: " + customerId);
+            }
+            customerRepository.deleteById(customerId);
+        }
 }

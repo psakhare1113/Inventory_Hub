@@ -10,10 +10,18 @@ import java.time.LocalDateTime;
 @Builder
 public class OrderItemResponse {
     private Long productId;
+    private String productName;   // actual product name from products-service
+    private String productImage;  // product image URL
     private String barcode;
     private int quantity;
     private BigDecimal unitPrice;
     private BigDecimal totalPrice;
+
+    /** GST rate applied to this item (%) — e.g. 5.0, 12.0, 18.0, 0 */
+    private BigDecimal gstRate;
+
+    /** GST amount for this item (₹) = unitPrice × gstRate / 100 */
+    private BigDecimal gstAmount;
     private OrderStatus orderStatus;
     private LocalDateTime deliveredAt;
 

@@ -1,7 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import '../css/Inventory.css';
+import '../css/InventoryEnhanced.css';
 import { FaPlus, FaFilePdf, FaFileExcel, FaTrash, FaEdit, FaTimes, FaFilter } from 'react-icons/fa';
-import { inventoryService, productsService, pricingService } from '../../services/imsApi';
+import { inventoryService, productsService, pricingService, authService } from '../../services/imsApi';
+
+// Import the inventory fix utility
+import { 
+  populateInventoryTable as utilPopulateTable, 
+  addTestInventoryData as utilAddTestData,
+  testInventoryService as utilTestService,
+  fetchInventoryData as utilFetchData
+} from '../../utils/inventoryFix';
+
+// Import the new inventory data fix utility
+import { 
+  fetchInventoryData as newFetchInventoryData,
+  testBackendServices,
+  addTestInventoryData as newAddTestData,
+  getServiceStatus
+} from '../../utils/inventoryDataFix';
+
+
 
 // Real-time event system for inventory updates
 class InventoryEventManager {
@@ -33,6 +52,144 @@ window.inventoryEventManager = window.inventoryEventManager || new InventoryEven
 const statusOptions = ["All", "AVAILABLE", "SOLD", "RESERVED", "DAMAGED"];
 const platformStatusOptions = ["ENABLED", "DISABLED"];
 const conditionOptions = ["NEW", "GOOD", "FAIR", "DAMAGED"];
+
+// ─── Grouped Inventory Table ─────────────────────────────────────────────────
+function GroupedInventoryTable({ filteredInventory, inventory, loading, error, formatPrice, getStatusBadge, onEdit, onDelete, products }) {
+  const [expandedProducts, setExpandedProducts] = useState({});
+
+  // Helper: get product name by productId
+  const getProductName = (productId) => {
+    const product = products?.find(p => p.productId === parseInt(productId));
+    return product ? (product.productName || product.name || `Product #${productId}`) : `Product #${productId}`;
+  };
+
+  // Group by productId
+  const groups = filteredInventory.reduce((acc, item) => {
+    const key = item.productId;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {});
+
+  const toggleExpand = (productId) => {
+    setExpandedProducts(prev => ({ ...prev, [productId]: !prev[productId] }));
+  };
+
+  if (loading && filteredInventory.length === 0) {
+    return (
+      <div style={{textAlign:'center', padding:'40px', color:'#666'}}>
+        <div style={{width:'40px',height:'40px',border:'4px solid #f3f3f3',borderTop:'4px solid #3498db',borderRadius:'50%',animation:'spin 1s linear infinite',margin:'0 auto 12px'}}></div>
+        <p>Loading inventory...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{textAlign:'center', padding:'40px'}}>
+        <div style={{background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'24px', color:'#991b1b', maxWidth:'520px', margin:'0 auto'}}>
+          <div style={{fontSize:'32px', marginBottom:'10px'}}>⚠️</div>
+          <div style={{fontWeight:'600', fontSize:'15px', marginBottom:'8px'}}>Failed to load inventory</div>
+          <div style={{fontSize:'13px', color:'#b91c1c', wordBreak:'break-word'}}>{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (filteredInventory.length === 0) {
+    return (
+      <div style={{textAlign:'center', padding:'40px', color:'#6b7280', fontSize:'14px'}}>
+        <div style={{fontSize:'32px', marginBottom:'10px'}}>📭</div>
+        No inventory data found.
+      </div>
+    );
+  }
+
+  return (
+    <table className="inventory-table">
+      <thead>
+        <tr>
+          <th>Product ID</th>
+          <th>Product Name</th>
+          <th>Base Barcode</th>
+          <th>MRP</th>
+          <th>Selling Price</th>
+          <th>Buy Price</th>
+          <th>Stock Summary</th>
+          <th>Platform</th>
+          <th>Units (expand)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {Object.entries(groups).map(([productId, items]) => {
+          const first = items[0];
+          const availableCount = inventory.filter(i => i.productId === first.productId && i.inventoryStatus === 'AVAILABLE').length;
+          const reservedCount = inventory.filter(i => i.productId === first.productId && i.inventoryStatus === 'RESERVED').length;
+          const soldCount = inventory.filter(i => i.productId === first.productId && (i.inventoryStatus === 'SALE' || i.inventoryStatus === 'SOLD')).length;
+          const isExpanded = expandedProducts[productId];
+
+          return (
+            <React.Fragment key={productId}>
+              {/* ── Summary Row ── */}
+              <tr style={{background: '#f8fafc', fontWeight: '600', borderTop: '2px solid #e2e8f0'}}>
+                <td>{productId}</td>
+                <td style={{color: '#1e40af', fontWeight: '700'}}>{getProductName(productId)}</td>
+                <td className="inventory-sku">{first.barcode?.replace(/-\d+$/, '') || first.barcode}</td>
+                <td>{formatPrice(first.mrp || 0)}</td>
+                <td>{formatPrice(first.sellingPrice || 0)}</td>
+                <td>{formatPrice(first.buyPrice || 0)}</td>
+                <td>
+                  <div style={{fontSize:'12px', lineHeight:'1.8'}}>
+                    <span style={{background:'#dcfce7',color:'#166534',padding:'2px 8px',borderRadius:'10px',marginRight:'4px',fontWeight:'700'}}>✅ {availableCount} Available</span>
+                    {reservedCount > 0 && <span style={{background:'#fef9c3',color:'#854d0e',padding:'2px 8px',borderRadius:'10px',marginRight:'4px'}}>🔒 {reservedCount} Reserved</span>}
+                    {soldCount > 0 && <span style={{background:'#f1f5f9',color:'#475569',padding:'2px 8px',borderRadius:'10px'}}>📦 {soldCount} Sold</span>}
+                  </div>
+                </td>
+                <td>
+                  <span className={first.platformStatus === 'ENABLED' ? 'status-instock' : 'status-outstock'}>
+                    {first.platformStatus}
+                  </span>
+                </td>
+                <td>
+                  <button
+                    onClick={() => toggleExpand(productId)}
+                    style={{background: isExpanded ? '#e0e7ff' : '#eff6ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'4px 12px', cursor:'pointer', fontSize:'12px', fontWeight:'600', color:'#4338ca'}}
+                  >
+                    {isExpanded ? '▲ Collapse' : `▼ ${items.length} units`}
+                  </button>
+                </td>
+              </tr>
+
+              {/* ── Individual Unit Rows (expanded) ── */}
+              {isExpanded && items.map((item) => (
+                <tr key={item.id || item.barcode} style={{background:'#fafafa', fontSize:'13px'}}>
+                  <td style={{paddingLeft:'24px', color:'#94a3b8'}}>↳ {item.id || 'N/A'}</td>
+                  <td style={{color:'#94a3b8', fontSize:'12px'}}>{getProductName(item.productId)}</td>
+                  <td className="inventory-sku" style={{color:'#64748b'}}>{item.barcode}</td>
+                  <td>{formatPrice(item.mrp || 0)}</td>
+                  <td>{formatPrice(item.sellingPrice || 0)}</td>
+                  <td>{formatPrice(item.buyPrice || 0)}</td>
+                  <td>
+                    <span className={getStatusBadge(item.inventoryStatus)}>
+                      {item.inventoryStatus}
+                    </span>
+                  </td>
+                  <td>{item.conditionStatus}</td>
+                  <td className="inventory-action-col">
+                    <div className="inventory-action-buttons">
+                      {/* Edit/Delete removed - Warehouse manages inventory */}
+                      <span style={{fontSize: '12px', color: '#94a3b8'}}>View Only</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </React.Fragment>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
 
 export default function Inventory() {
   const [inventory, setInventory] = useState([]);
@@ -78,9 +235,15 @@ export default function Inventory() {
   };
 
   useEffect(() => {
-    loadInventory();
-    loadProducts();
-    loadCategories();
+    // Test connection first, then load data
+    const initializeInventory = async () => {
+      await testInventoryConnection();
+      await loadInventory();
+      await loadProducts();
+      await loadCategories();
+    };
+    
+    initializeInventory();
     
     // Subscribe to real-time inventory events
     const unsubscribe = window.inventoryEventManager.subscribe((eventType, data) => {
@@ -88,7 +251,6 @@ export default function Inventory() {
       
       switch(eventType) {
         case 'INVENTORY_ADDED':
-          // Add new inventory item to current list
           setInventory(prev => {
             const exists = prev.find(item => item.barcode === data.barcode);
             if (!exists) {
@@ -102,7 +264,6 @@ export default function Inventory() {
           break;
           
         case 'INVENTORY_UPDATED':
-          // Update existing inventory item
           setInventory(prev => {
             const updated = prev.map(item => 
               item.barcode === data.barcode ? { ...item, ...data } : item
@@ -114,7 +275,6 @@ export default function Inventory() {
           break;
           
         case 'INVENTORY_DELETED':
-          // Remove inventory item
           setInventory(prev => {
             const filtered = prev.filter(item => item.barcode !== data.barcode);
             setFilteredInventory(statusFilter === 'All' ? filtered : 
@@ -124,11 +284,23 @@ export default function Inventory() {
           break;
           
         case 'REFRESH_INVENTORY':
-          // Full refresh
           loadInventory();
           break;
       }
     });
+    
+    // Listen for role changes
+    const handleRoleChange = () => {
+      loadInventory(); // Reload data with new role
+    };
+
+    // Listen for pricing updates — refresh inventory so MRP/price columns stay in sync
+    const handlePricingUpdate = () => {
+      loadInventory();
+    };
+    
+    window.addEventListener('roleChanged', handleRoleChange);
+    window.addEventListener('pricingUpdated', handlePricingUpdate);
     
     // Auto-refresh every 30 seconds
     const interval = setInterval(loadInventory, 30000);
@@ -136,20 +308,59 @@ export default function Inventory() {
     return () => {
       clearInterval(interval);
       unsubscribe();
+      window.removeEventListener('roleChanged', handleRoleChange);
+      window.removeEventListener('pricingUpdated', handlePricingUpdate);
     };
   }, [statusFilter]);
 
+  // Test inventory service connection
+  const testInventoryConnection = async () => {
+    try {
+      console.log('🔍 Testing inventory service connection...');
+      // Force admin role for inventory operations
+      const originalRole = localStorage.getItem('userRole');
+      localStorage.setItem('userRole', 'ADMIN');
+      
+      const testResult = await inventoryService.testConnection();
+      console.log('✅ Inventory service test result:', testResult);
+      
+      // Restore original role
+      if (originalRole) {
+        localStorage.setItem('userRole', originalRole);
+      }
+      
+      return testResult;
+    } catch (error) {
+      console.error('❌ Inventory service test failed:', error);
+      return { error: error.message };
+    }
+  };
+
+  // Enhanced inventory loading with better error handling
   const loadInventory = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await inventoryService.getAvailableStock();
-      console.log('Loaded inventory:', data);
-      setInventory(data || []);
-      setFilteredInventory(data || []);
+      console.log('🔄 Loading inventory data with enhanced error handling...');
+      
+      // Use the new utility function for better error handling
+      const result = await newFetchInventoryData();
+      
+      if (result.success) {
+        const data = result.data || [];
+        console.log('✅ Inventory data loaded successfully:', data.length, 'items');
+        setInventory(data);
+        setFilteredInventory(data);
+      } else {
+        console.error('❌ Failed to load inventory:', result.error);
+        setError(result.error || 'Failed to load inventory data');
+        setInventory([]);
+        setFilteredInventory([]);
+      }
+      
     } catch (err) {
-      console.error('Inventory load error:', err);
-      setError('Failed to load inventory: ' + err.message);
+      console.error('❌ Unexpected error in loadInventory:', err);
+      setError('Unexpected error: ' + err.message + '. Please check browser console for details.');
       setInventory([]);
       setFilteredInventory([]);
     } finally {
@@ -167,11 +378,15 @@ export default function Inventory() {
     }
   };
 
-  // Load categories
+  // Load categories and subcategories
   const loadCategories = async () => {
     try {
-      const allCategories = await productsService.getAllCategories();
+      const [allCategories, allSubcategories] = await Promise.all([
+        productsService.getAllCategories(),
+        productsService.getAllSubcategories()
+      ]);
       setCategories(allCategories || []);
+      setSubcategories(allSubcategories || []);
     } catch (error) {
       console.error('Error loading categories:', error);
     }
@@ -180,21 +395,26 @@ export default function Inventory() {
   // Handle product selection - automatically populate category, subcategory and pricing
   const handleProductChange = async (productId) => {
     try {
-      const product = products.find(p => p.id === parseInt(productId));
+      const product = products.find(p => p.productId === parseInt(productId));
       if (product) {
         setSelectedProduct(product);
         
-        // Auto-populate category and subcategory from selected product
+        // Generate a unique inventory barcode — always fresh, never reuse product barcode
+        const productBarcode = editingItem
+          ? formData.barcode
+          : (() => {
+              const ts = Date.now().toString().slice(-8);
+              const rand = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+              return `PRD-${ts}-${rand}`;
+            })();
+        
+        // Auto-populate all fields from selected product
         setFormData(prev => ({
           ...prev,
           productId: productId,
           categoryId: product.categoryId,
           subcategoryId: product.subcategoryId,
-          // Auto-fill pricing from product if available
-          mrp: product.price || prev.mrp,
-          showroomPrice: product.price ? (product.price * 0.9) : prev.showroomPrice,
-          sellingPrice: product.price ? (product.price * 0.85) : prev.sellingPrice,
-          buyPrice: product.price ? (product.price * 0.7) : prev.buyPrice
+          barcode: productBarcode
         }));
 
         // Load subcategories for the selected category
@@ -203,20 +423,65 @@ export default function Inventory() {
           setSubcategories(subs || []);
         }
 
-        // Try to get pricing data from pricing service
+        // Get pricing data from pricing service
         try {
-          const pricingData = await pricingService.getPricingByProductId(productId);
-          if (pricingData) {
+          const parsedProductId = parseInt(productId);
+          console.log('🔄 Fetching pricing data for product ID:', parsedProductId);
+          let pricingResponse = await pricingService.getPricingByProductId(parsedProductId);
+
+          // Fallback: search in all pricing list if direct fetch returns null
+          if (!pricingResponse || pricingResponse.error) {
+            console.log('⚠️ Direct pricing fetch failed, trying getAllPricing fallback...');
+            const allPricing = await pricingService.getAllPricing();
+            pricingResponse = allPricing.find(p => parseInt(p.productId) === parsedProductId) || null;
+          }
+          
+          if (pricingResponse && !pricingResponse.error) {
+            console.log('✅ Pricing data loaded:', pricingResponse);
+            
+            // Extract pricing data from response
+            const mrp = pricingResponse.mrp || '';
+            const sellingPrice = pricingResponse.sellingPrice || '';
+            const costPrice = pricingResponse.costPrice || '';
+            const unitSize = pricingResponse.unitSize || '';
+            const unitLabel = pricingResponse.unitLabel || '';
+            
             setFormData(prev => ({
               ...prev,
-              mrp: pricingData.mrp || prev.mrp,
-              showroomPrice: pricingData.showroomPrice || prev.showroomPrice,
-              buyPrice: pricingData.buyPrice || prev.buyPrice,
-              sellingPrice: pricingData.sellingPrice || prev.sellingPrice
+              mrp: mrp,
+              showroomPrice: mrp ? (mrp * 0.9).toFixed(2) : '',
+              buyPrice: costPrice,          // ← pricing table च्या costPrice ने auto-fill
+              sellingPrice: sellingPrice
+            }));
+            
+            console.log('💰 Pricing auto-filled:', {
+              mrp: mrp,
+              costPrice: costPrice,
+              sellingPrice: sellingPrice,
+              unitSize: unitSize,
+              unitLabel: unitLabel
+            });
+          } else {
+            console.log('⚠️ No pricing data found for product ID:', productId);
+            // Set empty pricing if no pricing data found
+            setFormData(prev => ({
+              ...prev,
+              mrp: '',
+              showroomPrice: '',
+              buyPrice: '',
+              sellingPrice: ''
             }));
           }
         } catch (pricingError) {
-          console.log('No pricing data found, using product price');
+          console.log('❌ Error fetching pricing data:', pricingError);
+          // Set empty pricing fields if no data available
+          setFormData(prev => ({
+            ...prev,
+            mrp: '',
+            showroomPrice: '',
+            buyPrice: '',
+            sellingPrice: ''
+          }));
         }
       }
     } catch (error) {
@@ -259,20 +524,21 @@ export default function Inventory() {
   };
 
   const handleDelete = async (barcode) => {
-    if (window.confirm('Are you sure you want to disable this inventory item?')) {
+    if (window.confirm('Are you sure you want to delete this inventory item? This action cannot be undone.')) {
       setLoading(true);
       try {
-        await inventoryService.disableInventory(barcode, 1);
+        const result = await inventoryService.deleteInventory(barcode);
         
-        // Emit real-time delete event
-        window.inventoryEventManager.emit('INVENTORY_DELETED', { barcode });
-        
-        alert('✅ Inventory item disabled successfully!');
-        // Don't reload - real-time events will update the UI
-        // await loadInventory();
+        if (result.success) {
+          // Emit real-time delete event
+          window.inventoryEventManager.emit('INVENTORY_DELETED', { barcode });
+          alert('✅ ' + result.message);
+        } else {
+          alert('❌ ' + result.error);
+        }
       } catch (err) {
         console.error('Delete error:', err);
-        alert('❌ Failed to disable inventory: ' + err.message);
+        alert('❌ Failed to delete inventory: ' + err.message);
       } finally {
         setLoading(false);
       }
@@ -323,6 +589,7 @@ export default function Inventory() {
       stockSource: 'SUPPLIER',
       isCustomerReturned: false,
       isWarehouseDamaged: false,
+      quantity: 1,
       createdBy: 1,
       updatedBy: 1
     });
@@ -333,9 +600,25 @@ export default function Inventory() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    // ── Price validation ──
+    const buyP  = parseFloat(formData.buyPrice);
+    const sellP = parseFloat(formData.sellingPrice);
+    const mrpP  = parseFloat(formData.mrp);
+
+    if (buyP > 0 && sellP > 0 && buyP >= sellP) {
+      alert(`❌ Buy Price (₹${buyP}) cannot be greater than or equal to Selling Price (₹${sellP})!\n\nRule: Buy Price < Selling Price\nExample: Buy Price ₹800, Selling Price ₹1,200`);
+      setLoading(false);
+      return;
+    }
+    if (sellP > 0 && mrpP > 0 && sellP > mrpP) {
+      alert(`❌ Selling Price (₹${sellP}) cannot be greater than MRP (₹${mrpP})!`);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const inventoryData = {
-        barcode: formData.barcode,
+      const baseData = {
         productId: parseInt(formData.productId),
         categoryId: parseInt(formData.categoryId),
         subcategoryId: parseInt(formData.subcategoryId),
@@ -354,38 +637,42 @@ export default function Inventory() {
         updatedBy: parseInt(formData.updatedBy)
       };
 
-      console.log('Submitting inventory data:', inventoryData);
-
       if (editingItem) {
-        await inventoryService.updatePrice(formData.barcode, {
-          mrp: inventoryData.mrp,
-          showroomPrice: inventoryData.showroomPrice,
-          sellingPrice: inventoryData.sellingPrice
-        });
-        
-        // Emit real-time update event
-        window.inventoryEventManager.emit('INVENTORY_UPDATED', {
-          ...editingItem,
-          ...inventoryData
-        });
-        
+        // Edit: single item update
+        const result = await inventoryService.updateInventory(formData.barcode, { ...baseData, barcode: formData.barcode });
+        if (result && result.error) throw new Error(result.error);
+        window.inventoryEventManager.emit('INVENTORY_UPDATED', { ...editingItem, ...baseData });
         alert('✅ Inventory updated successfully!');
       } else {
-        const newInventory = await inventoryService.createInventory(inventoryData);
-        
-        // Emit real-time add event
-        window.inventoryEventManager.emit('INVENTORY_ADDED', {
-          ...inventoryData,
-          // Add any additional fields that might be returned from API
-          ...(newInventory || {})
-        });
-        
-        alert('✅ Inventory added successfully!');
+        // Add: create N units with unique barcodes
+        const qty = parseInt(formData.quantity) || 1;
+        // Sanitize base barcode — strip any colon-suffixed segments that may have been stored previously
+        const baseBarcode = formData.barcode.replace(/:[^/]*$/, '');
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 1; i <= qty; i++) {
+          // barcode: BED-01-1, BED-01-2 ... or BED-01 if qty=1
+          const barcode = qty === 1 ? baseBarcode : `${baseBarcode}-${i}`;
+          try {
+            const result = await inventoryService.createInventory({ ...baseData, barcode });
+            if (result.error) { failCount++; console.error(`Failed unit ${i}:`, result.error); }
+            else { successCount++; window.inventoryEventManager.emit('INVENTORY_ADDED', { ...baseData, barcode }); }
+          } catch (err) {
+            failCount++;
+            console.error(`Error unit ${i}:`, err.message);
+          }
+        }
+
+        if (failCount === 0) {
+          alert(`✅ ${successCount} inventory unit${successCount > 1 ? 's' : ''} added successfully!`);
+        } else {
+          alert(`⚠️ ${successCount} units added, ${failCount} failed. Check console for details.`);
+        }
       }
-      
+
       setShowModal(false);
-      // Don't reload - real-time events will update the UI
-      // await loadInventory();
+      await loadInventory();
     } catch (err) {
       console.error('Submit error:', err);
       alert('❌ Failed to save inventory: ' + err.message);
@@ -412,30 +699,25 @@ export default function Inventory() {
 
   return (
     <div className="inventory-page">
+
       <div className="inventory-header">
-        <h2>Inventory Management</h2>
+        <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
+          <h2>Inventory Management</h2>
+          <div style={{
+            background: '#fef3c7',
+            border: '1px solid #fbbf24',
+            borderRadius: '8px',
+            padding: '8px 16px',
+            fontSize: '13px',
+            color: '#92400e',
+            fontWeight: '600'
+          }}>
+            ℹ️ Inventory is managed by Warehouse. View only.
+          </div>
+        </div>
         <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
-          {!error && !loading && (
-            <span style={{color: 'green', fontSize: '14px'}}>
-              ✅ Connected - {filteredInventory.length} items loaded
-            </span>
-          )}
-          {error && <span style={{color: 'red', fontSize: '14px'}}>⚠️ {error}</span>}
           {loading && <span style={{color: 'orange', fontSize: '14px'}}>🔄 Loading...</span>}
-          <button 
-            className="add-inventory-btn" 
-            onClick={() => {
-              loadInventory();
-              window.inventoryEventManager.emit('REFRESH_INVENTORY');
-            }}
-            style={{background: '#22c55e'}}
-            title="Refresh Data"
-          >
-            🔄 Refresh
-          </button>
-          <button className="add-inventory-btn" onClick={handleAddInventory}>
-            <FaPlus /> Add Inventory
-          </button>
+          {/* Add Inventory button removed - Warehouse manages inventory */}
         </div>
       </div>
 
@@ -460,6 +742,23 @@ export default function Inventory() {
         <div className="inventory-card-header">
           <h3>Inventory List ({filteredInventory.length})</h3>
           <div className="inventory-export-buttons">
+            <button 
+              className="inventory-refresh-btn" 
+              onClick={loadInventory}
+              disabled={loading}
+              style={{
+                background: '#10b981',
+                color: 'white',
+                border: 'none',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                marginRight: '8px',
+                fontSize: '14px'
+              }}
+            >
+              🔄 {loading ? 'Loading...' : 'Refresh'}
+            </button>
             <button className="inventory-pdf-btn" onClick={handleExportPDF}>
               <FaFilePdf /> PDF
             </button>
@@ -469,65 +768,17 @@ export default function Inventory() {
           </div>
         </div>
 
-        <table className="inventory-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Barcode</th>
-              <th>Product ID</th>
-              <th>MRP</th>
-              <th>Selling Price</th>
-              <th>Buy Price</th>
-              <th>Condition</th>
-              <th>Inventory Status</th>
-              <th>Platform Status</th>
-              <th className="inventory-action-col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredInventory.length > 0 ? filteredInventory.map((item) => (
-              <tr key={item.id || item.barcode}>
-                <td>{item.id || 'N/A'}</td>
-                <td className="inventory-sku">{item.barcode}</td>
-                <td>{item.productId}</td>
-                <td>{formatPrice(item.mrp || 0)}</td>
-                <td>{formatPrice(item.sellingPrice || 0)}</td>
-                <td>{formatPrice(item.buyPrice || 0)}</td>
-                <td>{item.conditionStatus}</td>
-                <td>
-                  <span className={getStatusBadge(item.inventoryStatus)}>
-                    {item.inventoryStatus}
-                  </span>
-                </td>
-                <td>
-                  <span className={item.platformStatus === 'ENABLED' ? 'status-instock' : 'status-outstock'}>
-                    {item.platformStatus}
-                  </span>
-                </td>
-                <td className="inventory-action-col">
-                  <div className="inventory-action-buttons">
-                    <FaEdit 
-                      className="inventory-edit-icon" 
-                      onClick={() => handleEdit(item.barcode)}
-                      title="Edit Item"
-                    />
-                    <FaTrash 
-                      className="inventory-delete-icon" 
-                      onClick={() => handleDelete(item.barcode)}
-                      title="Disable Item"
-                    />
-                  </div>
-                </td>
-              </tr>
-            )) : (
-              <tr>
-                <td colSpan="10" style={{textAlign: 'center', padding: '40px', color: '#666'}}>
-                  {loading ? 'Loading inventory...' : error ? 'Error loading data. Please check backend connection.' : 'No inventory items found. Click "Add Inventory" to add items.'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <GroupedInventoryTable
+          filteredInventory={filteredInventory}
+          inventory={inventory}
+          loading={loading}
+          error={error}
+          formatPrice={formatPrice}
+          getStatusBadge={getStatusBadge}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          products={products}
+        />
       </div>
 
       {showModal && (
@@ -589,8 +840,8 @@ export default function Inventory() {
                 >
                   <option value="">-- Select Product --</option>
                   {products.map(product => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} (ID: {product.id})
+                    <option key={product.productId} value={product.productId}>
+                      {product.name} (ID: {product.productId})
                     </option>
                   ))}
                 </select>
@@ -606,30 +857,64 @@ export default function Inventory() {
                   marginBottom: '12px',
                   borderLeft: '4px solid #007bff'
                 }}>
-                  <h4 style={{margin: '0 0 8px 0', fontSize: '14px', color: '#0f172a'}}>Selected Product Details:</h4>
+                  <h4 style={{margin: '0 0 8px 0', fontSize: '14px', color: '#0f172a'}}>✅ Product Auto-Selected:</h4>
                   <p style={{margin: '4px 0', fontSize: '12px', color: '#374151'}}><strong>Name:</strong> {selectedProduct.name}</p>
+                  <p style={{margin: '4px 0', fontSize: '12px', color: '#374151'}}><strong>Product ID:</strong> {selectedProduct.productId}</p>
+                  <p style={{margin: '4px 0', fontSize: '12px', color: '#374151'}}><strong>Product Barcode:</strong> {selectedProduct.productBarcode}</p>
                   <p style={{margin: '4px 0', fontSize: '12px', color: '#374151'}}><strong>Category ID:</strong> {selectedProduct.categoryId}</p>
                   <p style={{margin: '4px 0', fontSize: '12px', color: '#374151'}}><strong>Subcategory ID:</strong> {selectedProduct.subcategoryId}</p>
-                  {selectedProduct.price && (
-                    <p style={{margin: '4px 0', fontSize: '12px', color: '#374151'}}><strong>Product Price:</strong> ₹{selectedProduct.price}</p>
+                  <p style={{margin: '4px 0', fontSize: '11px', color: '#22c55e', fontStyle: 'italic'}}>🔄 Auto-filling: Barcode, Category, Subcategory, and Pricing data...</p>
+                  {formData.mrp && (
+                    <p style={{margin: '4px 0', fontSize: '11px', color: '#16a34a', fontWeight: 'bold'}}>
+                      💰 Pricing loaded: MRP ₹{formData.mrp} | Cost ₹{formData.buyPrice || '—'} | Selling ₹{formData.sellingPrice}
+                      {formData.buyPrice && formData.sellingPrice && parseFloat(formData.buyPrice) > 0 && (
+                        <span style={{color: '#6366f1', marginLeft: 6}}>
+                          → Profit/unit: ₹{(parseFloat(formData.sellingPrice) - parseFloat(formData.buyPrice)).toFixed(0)}
+                        </span>
+                      )}
+                      {selectedProduct.unitSize && selectedProduct.unitLabel && (
+                        <span style={{color: '#6b7280'}}> ({selectedProduct.unitSize} {selectedProduct.unitLabel})</span>
+                      )}
+                    </p>
                   )}
-                  <p style={{margin: '4px 0', fontSize: '11px', color: '#6b7280', fontStyle: 'italic'}}>Pricing fields have been auto-filled based on product data</p>
                 </div>
               )}
 
               <div style={{marginBottom: '8px'}}>
-                <label style={{display: 'block', marginBottom: '4px', fontWeight: '600', color: '#374151', fontSize: '13px'}}>Barcode *</label>
+                <label style={{display: 'block', marginBottom: '4px', fontWeight: '600', color: '#374151', fontSize: '13px'}}>Barcode (From Product) *</label>
                 <input
                   type="text"
                   name="barcode"
                   value={formData.barcode}
                   onChange={handleInputChange}
-                  placeholder="Enter barcode"
+                  placeholder="Auto-filled from selected product"
                   disabled={editingItem}
                   required
-                  style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box'}}
+                  style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box', background: editingItem ? '#f9fafb' : '#f0f8ff', borderLeft: editingItem ? 'none' : '3px solid #007bff'}}
                 />
               </div>
+
+              {/* Quantity field — only for new entries */}
+              {!editingItem && (
+                <div style={{marginBottom: '8px', gridColumn: '1 / -1', background: '#fefce8', border: '2px solid #facc15', borderRadius: '8px', padding: '12px'}}>
+                  <label style={{display: 'block', marginBottom: '4px', fontWeight: '700', color: '#92400e', fontSize: '13px'}}>
+                    📦 How many units to add? (Quantity)
+                  </label>
+                  <input
+                    type="number"
+                    name="quantity"
+                    value={formData.quantity}
+                    onChange={handleInputChange}
+                    min="1"
+                    max="100"
+                    required
+                    style={{width: '100%', padding: '10px', border: '2px solid #facc15', borderRadius: '6px', fontSize: '15px', fontWeight: '700', boxSizing: 'border-box', background: '#fff'}}
+                  />
+                  <p style={{margin: '6px 0 0', fontSize: '11px', color: '#78350f'}}>
+                    ⚡ If quantity &gt; 1, barcodes are auto-generated: <strong>{formData.barcode || 'PRD-XXXXXXXX-XXXX'}-1</strong>, <strong>{formData.barcode || 'PRD-XXXXXXXX-XXXX'}-2</strong>, ...
+                  </p>
+                </div>
+              )}
               <div style={{marginBottom: '8px'}}>
                 <label style={{display: 'block', marginBottom: '4px', fontWeight: '600', color: '#374151', fontSize: '13px'}}>Product ID (Auto-filled)</label>
                 <input
@@ -658,12 +943,35 @@ export default function Inventory() {
                 <input type="number" step="0.01" name="showroomPrice" value={formData.showroomPrice} onChange={handleInputChange} placeholder="Auto-filled from product" required style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box', background: '#f0f8ff', borderLeft: '3px solid #007bff'}} />
               </div>
               <div style={{marginBottom: '8px'}}>
-                <label style={{display: 'block', marginBottom: '4px', fontWeight: '600', color: '#374151', fontSize: '13px'}}>Buy Price (Auto-filled) *</label>
-                <input type="number" step="0.01" name="buyPrice" value={formData.buyPrice} onChange={handleInputChange} placeholder="Auto-filled from product" required style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box', background: '#f0f8ff', borderLeft: '3px solid #007bff'}} />
+                <label style={{display: 'block', marginBottom: '4px', fontWeight: '600', color: '#374151', fontSize: '13px'}}>
+                  Buy Price * <span style={{color: formData.buyPrice ? '#16a34a' : '#dc2626', fontWeight:700}}>
+                    {formData.buyPrice ? '← Auto-filled from Pricing (you can edit)' : '← Set costPrice in Pricing first'}
+                  </span>
+                </label>
+                <input type="number" step="0.01" name="buyPrice" value={formData.buyPrice} onChange={handleInputChange}
+                  placeholder="Auto-filled from Pricing costPrice once set"
+                  required
+                  style={{width: '100%', padding: '8px', border: `1px solid ${formData.buyPrice && formData.sellingPrice && parseFloat(formData.buyPrice) >= parseFloat(formData.sellingPrice) ? '#ef4444' : '#f59e0b'}`, borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box', background: formData.buyPrice ? '#f0fdf4' : '#fffbeb', borderLeft: `3px solid ${formData.buyPrice && formData.sellingPrice && parseFloat(formData.buyPrice) >= parseFloat(formData.sellingPrice) ? '#ef4444' : formData.buyPrice ? '#10b981' : '#f59e0b'}`}} />
+                {!formData.buyPrice && (
+                  <p style={{color:'#d97706', fontSize:'11px', marginTop:'3px', fontWeight:500}}>
+                    ⚠️ Go to Pricing → Add/Edit Pricing → set Cost Price — it will auto-fill here
+                  </p>
+                )}
+                {formData.buyPrice && formData.sellingPrice && parseFloat(formData.buyPrice) >= parseFloat(formData.sellingPrice) && (
+                  <p style={{color:'#ef4444', fontSize:'11px', marginTop:'3px', fontWeight:500}}>
+                    ⚠️ Buy Price must be less than Selling Price!
+                  </p>
+                )}
               </div>
               <div style={{marginBottom: '8px'}}>
-                <label style={{display: 'block', marginBottom: '4px', fontWeight: '600', color: '#374151', fontSize: '13px'}}>Selling Price (Auto-filled) *</label>
-                <input type="number" step="0.01" name="sellingPrice" value={formData.sellingPrice} onChange={handleInputChange} placeholder="Auto-filled from product" required style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box', background: '#f0f8ff', borderLeft: '3px solid #007bff'}} />
+                <label style={{display: 'block', marginBottom: '4px', fontWeight: '600', color: '#374151', fontSize: '13px'}}>Selling Price (Auto-filled) * <span style={{color:'#6b7280', fontWeight:400}}>— Customer ला विकण्याची किंमत</span></label>
+                <input type="number" step="0.01" name="sellingPrice" value={formData.sellingPrice} onChange={handleInputChange} placeholder="Auto-filled from product" required
+                  style={{width: '100%', padding: '8px', border: `1px solid ${formData.buyPrice && formData.sellingPrice && parseFloat(formData.buyPrice) >= parseFloat(formData.sellingPrice) ? '#ef4444' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box', background: '#f0f8ff', borderLeft: `3px solid ${formData.buyPrice && formData.sellingPrice && parseFloat(formData.buyPrice) >= parseFloat(formData.sellingPrice) ? '#ef4444' : '#007bff'}`}} />
+                {formData.buyPrice && formData.sellingPrice && parseFloat(formData.buyPrice) > 0 && parseFloat(formData.sellingPrice) > parseFloat(formData.buyPrice) && (
+                  <p style={{color:'#10b981', fontSize:'11px', marginTop:'3px'}}>
+                    ✅ Profit: ₹{(parseFloat(formData.sellingPrice) - parseFloat(formData.buyPrice)).toFixed(2)} per unit
+                  </p>
+                )}
               </div>
               <div style={{marginBottom: '8px'}}>
                 <label style={{display: 'block', marginBottom: '4px', fontWeight: '600', color: '#374151', fontSize: '13px'}}>Condition *</label>

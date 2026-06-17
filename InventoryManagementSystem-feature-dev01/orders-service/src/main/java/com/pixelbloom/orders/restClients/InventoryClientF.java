@@ -7,12 +7,12 @@ import com.pixelbloom.orders.responseEntity.OrderPhysicalInspectionResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
-@FeignClient(name = "api-gateway",url = "${api.gateway.url:http://localhost:9999}",
+@FeignClient(name = "inventory-service",url = "http://localhost:9093",
         configuration = FeignConfig.class)
 
 public interface InventoryClientF {
     @PostMapping("/api/inventory/reserve")
-    void reserveInventory(@RequestBody InventoryReserveRequest request);
+    ReserveItemResponse reserveInventory(@RequestBody InventoryReserveRequest request);
 
     @PostMapping("/api/inventory/confirm")
     void confirmSale(@RequestParam("orderNumber") String orderNumber);
@@ -29,5 +29,11 @@ public interface InventoryClientF {
 
     @PostMapping("/api/inventory/orderReturn-Initiated")
     void returnInitiated(@RequestBody InventoryInitiateReturnRequest request);
+
+    @PostMapping("/api/inventory/updateReturnInspection")
+    void updateReturnInspectionDetails(@RequestBody InventoryInspectionUpdateRequest request);
+
+    @GetMapping("/api/warehouse/by-barcode/{barcode}")
+    java.util.Map<String, Object> getWarehouseByBarcode(@PathVariable("barcode") String barcode);
 }
 

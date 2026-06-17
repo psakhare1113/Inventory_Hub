@@ -3,8 +3,12 @@ package com.pixelbloom.orders.enums;
 public enum OrderStatus {
     CREATED,
     CONFIRMED,
+    PROCESSING,
+    PICKED,   // Picker has picked items from warehouse
+    PACKED,
     CANCELLED,
     SHIPPED,
+    OUT_FOR_DELIVERY,
     DELIVERED,
     REFUNDED,
     FAILED,

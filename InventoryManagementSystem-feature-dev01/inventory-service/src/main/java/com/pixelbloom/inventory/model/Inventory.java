@@ -30,10 +30,10 @@ public class Inventory {
     @Column(nullable = false)
     private Long productId;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Long categoryId;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Long subcategoryId;
 
     @Column(nullable = false)
@@ -51,16 +51,16 @@ public class Inventory {
     @Enumerated(EnumType.STRING)
     private ConditionStatus conditionStatus; // GOOD, CUSTOMER_DAMAGED, WAREHOUSE_DAMAGED
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private BigDecimal mrp;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private BigDecimal showroomPrice;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private BigDecimal buyPrice;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private BigDecimal sellingPrice;
 
     @Column(nullable = false)

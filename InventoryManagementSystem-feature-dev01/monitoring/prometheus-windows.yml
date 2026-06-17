@@ -1,0 +1,68 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+
+  - job_name: 'api-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:9999']
+        labels:
+          application: 'api-gateway'
+
+  - job_name: 'auth-server'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:2000']
+        labels:
+          application: 'auth-server'
+
+  - job_name: 'orders-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:9091']
+        labels:
+          application: 'orders-service'
+
+  - job_name: 'inventory-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:9093']
+        labels:
+          application: 'inventory-service'
+
+  - job_name: 'products-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:9094']
+        labels:
+          application: 'products-service'
+
+  - job_name: 'payment-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:9096']
+        labels:
+          application: 'payment-service'
+
+  - job_name: 'shipping-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:9097']
+        labels:
+          application: 'shipping-service'
+
+  - job_name: 'warehouse-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:8088']
+        labels:
+          application: 'warehouse-service'
+
+  - job_name: 'service-registry'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:8761']
+        labels:
+          application: 'service-registry'

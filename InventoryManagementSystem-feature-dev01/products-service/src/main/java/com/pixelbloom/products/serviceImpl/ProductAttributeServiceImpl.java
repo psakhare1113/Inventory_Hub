@@ -20,7 +20,6 @@ public class ProductAttributeServiceImpl implements ProductAttributeService {
 
     @Override
     public Map<String, String> getAttributes(Long productId) {
-
         return repository.findByProductId(productId)
                 .stream()
                 .collect(Collectors.toMap(
@@ -28,9 +27,14 @@ public class ProductAttributeServiceImpl implements ProductAttributeService {
                         ProductAttribute::getValue
                 ));
     }
+    
+    @Override
+    public List<ProductAttribute> getAttributesList(Long productId) {
+        return repository.findByProductId(productId);
+    }
 
     @Override
-    public void saveAttributes(Long productId,Map<String, String> attributes) {
+    public void saveAttributes(Long productId, Map<String, String> attributes) {
         // delete old attributes
         repository.deleteAll(repository.findByProductId(productId));
         // save new ones
@@ -42,14 +46,17 @@ public class ProductAttributeServiceImpl implements ProductAttributeService {
             repository.save(attr);
         });
     }
+    
+    @Override
+    public void saveAttribute(ProductAttribute attribute) {
+        repository.save(attribute);
+    }
 
     @Override
     public List<Long> filterProducts(Map<String, String> filters) {
-
         List<Long> result = null;
 
         for (Map.Entry<String, String> entry : filters.entrySet()) {
-
             List<Long> productIds =
                     repository.findProductIdsByAttribute(
                             entry.getKey(),
@@ -65,6 +72,4 @@ public class ProductAttributeServiceImpl implements ProductAttributeService {
 
         return result == null ? List.of() : result;
     }
-
-
 }

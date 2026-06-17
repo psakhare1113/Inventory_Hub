@@ -10,9 +10,16 @@ import java.util.Map;
 @RestControllerAdvice
 public class AuthExceptionHandler {
 
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<?> handleSecurityException(SecurityException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", e.getMessage()));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntimeException(RuntimeException e) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        e.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", e.getMessage()));
     }
 

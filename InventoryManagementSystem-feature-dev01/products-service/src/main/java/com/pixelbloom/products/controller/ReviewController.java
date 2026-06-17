@@ -43,4 +43,10 @@ public class ReviewController {
     public Review update(@PathVariable Long reviewId,@RequestBody UpdateReviewRequest request) {
         return reviewService.updateReview(reviewId,request.getRating(),request.getComment());
     }
+
+    // Get all reviews for a product
+    @GetMapping("/{productId}/reviews")
+    public List<Review> getProductReviews(@PathVariable Long productId) {
+        return reviewService.getProductReviews(productId);
+    }
 }

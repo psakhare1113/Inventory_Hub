@@ -5,7 +5,11 @@ import com.pixelbloom.products.repository.CategoryRepository;
 import com.pixelbloom.products.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,11 +37,21 @@ public class CategoryServiceImpl implements CategoryService {
         Category existing = getCategoryById(id);
         existing.setName(category.getName());
         existing.setImageUrl(category.getImageUrl());
+        if (category.getGstRate() != null) {
+            existing.setGstRate(category.getGstRate());
+        }
         return categoryRepository.save(existing);
     }
 
     @Override
     public void deleteCategory(Long id) {
         categoryRepository.deleteById(id);
+    }
+
+    // Returns { categoryId -> gstRate } map — used by checkout for real-time GST
+    @Override
+    public Map<Long, BigDecimal> getGstRateMap() {
+        return categoryRepository.findAll().stream()
+                .collect(Collectors.toMap(Category::getId, Category::getGstRate));
     }
 }
